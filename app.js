@@ -22,6 +22,8 @@ const recipeNameInput = document.querySelector("#recipe-name");
 const recipeServingsInput = document.querySelector("#recipe-servings");
 const recipeIngredientsInput = document.querySelector("#recipe-ingredients");
 const recipeTagInputs = Array.from(document.querySelectorAll('input[name="recipe-tags"]'));
+const navTabs = Array.from(document.querySelectorAll(".nav-tab"));
+const pageViews = Array.from(document.querySelectorAll(".page-view"));
 const recipeLibrary = document.querySelector("#recipe-library");
 const weekBoard = document.querySelector("#week-board");
 const shoppingList = document.querySelector("#shopping-list");
@@ -29,6 +31,10 @@ const resetWeekButton = document.querySelector("#reset-week");
 const copyShoppingListButton = document.querySelector("#copy-shopping-list");
 const refreshDataButton = document.querySelector("#refresh-data");
 const syncStatus = document.querySelector("#sync-status");
+const recipeModal = document.querySelector("#recipe-modal");
+const openRecipeModalButton = document.querySelector("#open-recipe-modal");
+const openRecipeModalSecondaryButton = document.querySelector("#open-recipe-modal-secondary");
+const closeRecipeModalButton = document.querySelector("#close-recipe-modal");
 const recipeCardTemplate = document.querySelector("#recipe-card-template");
 const dayCardTemplate = document.querySelector("#day-card-template");
 
@@ -36,6 +42,24 @@ recipeForm.addEventListener("submit", handleRecipeSubmit);
 resetWeekButton.addEventListener("click", resetWeek);
 copyShoppingListButton.addEventListener("click", copyShoppingList);
 refreshDataButton.addEventListener("click", () => syncState({ announce: true }));
+openRecipeModalButton.addEventListener("click", openRecipeModal);
+openRecipeModalSecondaryButton.addEventListener("click", openRecipeModal);
+closeRecipeModalButton.addEventListener("click", closeRecipeModal);
+recipeModal.addEventListener("click", (event) => {
+  if (event.target instanceof HTMLElement && event.target.dataset.closeModal === "true") {
+    closeRecipeModal();
+  }
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !recipeModal.hidden) {
+    closeRecipeModal();
+  }
+});
+navTabs.forEach((tab) => {
+  tab.addEventListener("click", () => {
+    setActivePage(tab.dataset.page || "planner");
+  });
+});
 
 initialize();
 
@@ -96,6 +120,8 @@ async function handleRecipeSubmit(event) {
     recipeTagInputs.forEach((input) => {
       input.checked = input.value === "Mittag" || input.value === "Abendessen";
     });
+    closeRecipeModal();
+    setActivePage("library");
     updateSyncStatus("Rezept fuer alle gespeichert.");
     render();
   } catch {
@@ -172,6 +198,7 @@ function renderWeekBoard() {
   DAYS.forEach((day) => {
     const dayCard = dayCardTemplate.content.firstElementChild.cloneNode(true);
     dayCard.querySelector("h3").textContent = day;
+    dayCard.querySelector(".day-card-subtitle").textContent = `${MEALS.length} Mahlzeiten im Blick`;
     const mealsContainer = dayCard.querySelector(".meal-slots");
 
     MEALS.forEach((meal) => {
@@ -432,6 +459,24 @@ function replaceState(nextState) {
 
 function updateSyncStatus(message) {
   syncStatus.textContent = message;
+}
+
+function openRecipeModal() {
+  recipeModal.hidden = false;
+  recipeNameInput.focus();
+}
+
+function closeRecipeModal() {
+  recipeModal.hidden = true;
+}
+
+function setActivePage(page) {
+  navTabs.forEach((tab) => {
+    tab.classList.toggle("is-active", tab.dataset.page === page);
+  });
+  pageViews.forEach((view) => {
+    view.classList.toggle("is-active", view.dataset.pageView === page);
+  });
 }
 
 async function apiFetch(url, options = {}) {

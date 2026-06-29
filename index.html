@@ -16,98 +16,118 @@
         <p class="eyebrow">Wochenplanung fuer dein Essen</p>
         <h1>Rezepte waehlen, Woche fuellen, Einkaufsliste erzeugen.</h1>
         <p class="hero-copy">
-          Lege eigene Rezepte mit Zutaten und passenden Meal-Labels an, waehle sie fuer
-          Fruehstueck, Mittag oder Abendessen aus und sammle daraus automatisch deine Einkaufsliste.
+          Plane deine Woche in einer klaren Wochenansicht, verwalte deine Rezeptbibliothek separat
+          und lege neue Rezepte in einem schnellen Pop-up an.
         </p>
         <p id="sync-status" class="sync-status">Verbinde mit gemeinsamem Plan...</p>
       </div>
       <div class="hero-actions">
         <button id="refresh-data" class="secondary-button" type="button">Jetzt synchronisieren</button>
         <button id="reset-week" class="secondary-button" type="button">Woche leeren</button>
+        <button id="open-recipe-modal" class="primary-button" type="button">Neues Rezept</button>
       </div>
     </header>
 
-    <main class="layout">
-      <section class="panel panel-week">
-        <div class="panel-header">
-          <div>
-            <p class="section-kicker">Planung</p>
-            <h2>Deine Woche</h2>
+    <nav class="top-nav" aria-label="Hauptnavigation">
+      <button class="nav-tab is-active" data-page="planner" type="button">Wochenplan</button>
+      <button class="nav-tab" data-page="library" type="button">Bibliothek</button>
+      <button class="nav-tab" data-page="shopping" type="button">Einkaufsliste</button>
+    </nav>
+
+    <main>
+      <section id="planner-page" class="page-view is-active" data-page-view="planner">
+        <section class="panel panel-week">
+          <div class="panel-header panel-header-wide">
+            <div>
+              <p class="section-kicker">Planung</p>
+              <h2>Deine Woche</h2>
+            </div>
+            <p class="drop-hint">Rezept pro Mahlzeit auswaehlen und Personenzahl anpassen.</p>
           </div>
-          <p class="drop-hint">Rezept pro Mahlzeit auswaehlen und Personenzahl anpassen.</p>
-        </div>
-        <div id="week-board" class="week-board"></div>
+          <div id="week-board" class="week-board"></div>
+        </section>
       </section>
 
-      <section class="panel panel-accent panel-recipes">
-        <div class="panel-header">
-          <div>
-            <p class="section-kicker">Rezepte</p>
-            <h2>Neues Rezept anlegen</h2>
+      <section id="library-page" class="page-view" data-page-view="library">
+        <section class="panel panel-accent page-panel">
+          <div class="panel-header panel-header-wide">
+            <div>
+              <p class="section-kicker">Bibliothek</p>
+              <h2>Deine Rezepte</h2>
+            </div>
+            <button id="open-recipe-modal-secondary" class="secondary-button" type="button">Rezept anlegen</button>
           </div>
-        </div>
-
-        <form id="recipe-form" class="recipe-form">
-          <label>
-            Rezeptname
-            <input id="recipe-name" name="name" type="text" placeholder="Zum Beispiel Gemueselasagne" required>
-          </label>
-
-          <label>
-            Personenanzahl
-            <input id="recipe-servings" name="baseServings" type="number" min="1" value="2" required>
-          </label>
-
-          <fieldset class="recipe-tags-fieldset">
-            <legend>Passend fuer</legend>
-            <label class="tag-option">
-              <input type="checkbox" name="recipe-tags" value="Fruehstueck">
-              <span>Fruehstueck</span>
-            </label>
-            <label class="tag-option">
-              <input type="checkbox" name="recipe-tags" value="Mittag" checked>
-              <span>Mittag</span>
-            </label>
-            <label class="tag-option">
-              <input type="checkbox" name="recipe-tags" value="Abendessen" checked>
-              <span>Abendessen</span>
-            </label>
-          </fieldset>
-
-          <label>
-            Zutaten
-            <textarea
-              id="recipe-ingredients"
-              name="ingredients"
-              rows="5"
-              placeholder="Eine Zutat pro Zeile, z. B.&#10;2 Zucchini&#10;500 g Tomaten&#10;1 Packung Lasagneplatten"
-              required
-            ></textarea>
-          </label>
-
-          <button class="primary-button" type="submit">Rezept speichern</button>
-        </form>
-
-        <div class="panel-header recipes-header">
-          <div>
-            <p class="section-kicker">Bibliothek</p>
-            <h2>Rezepte fuer die Auswahl</h2>
-          </div>
-        </div>
-        <div id="recipe-library" class="recipe-library" aria-live="polite"></div>
+          <div id="recipe-library" class="recipe-library" aria-live="polite"></div>
+        </section>
       </section>
 
-      <section class="panel shopping-panel panel-shopping">
-        <div class="panel-header">
-          <div>
-            <p class="section-kicker">Einkauf</p>
-            <h2>Automatische Einkaufsliste</h2>
+      <section id="shopping-page" class="page-view" data-page-view="shopping">
+        <section class="panel shopping-panel page-panel">
+          <div class="panel-header panel-header-wide">
+            <div>
+              <p class="section-kicker">Einkauf</p>
+              <h2>Automatische Einkaufsliste</h2>
+            </div>
+            <button id="copy-shopping-list" class="secondary-button" type="button">Liste kopieren</button>
           </div>
-          <button id="copy-shopping-list" class="secondary-button" type="button">Liste kopieren</button>
-        </div>
-        <ul id="shopping-list" class="shopping-list"></ul>
+          <ul id="shopping-list" class="shopping-list"></ul>
+        </section>
       </section>
     </main>
+  </div>
+
+  <div id="recipe-modal" class="modal-shell" hidden>
+    <div class="modal-backdrop" data-close-modal="true"></div>
+    <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="recipe-modal-title">
+      <div class="panel-header panel-header-wide">
+        <div>
+          <p class="section-kicker">Rezepte</p>
+          <h2 id="recipe-modal-title">Neues Rezept anlegen</h2>
+        </div>
+        <button id="close-recipe-modal" class="ghost-button" type="button">Schliessen</button>
+      </div>
+
+      <form id="recipe-form" class="recipe-form">
+        <label>
+          Rezeptname
+          <input id="recipe-name" name="name" type="text" placeholder="Zum Beispiel Gemueselasagne" required>
+        </label>
+
+        <label>
+          Personenanzahl
+          <input id="recipe-servings" name="baseServings" type="number" min="1" value="2" required>
+        </label>
+
+        <fieldset class="recipe-tags-fieldset">
+          <legend>Passend fuer</legend>
+          <label class="tag-option">
+            <input type="checkbox" name="recipe-tags" value="Fruehstueck">
+            <span>Fruehstueck</span>
+          </label>
+          <label class="tag-option">
+            <input type="checkbox" name="recipe-tags" value="Mittag" checked>
+            <span>Mittag</span>
+          </label>
+          <label class="tag-option">
+            <input type="checkbox" name="recipe-tags" value="Abendessen" checked>
+            <span>Abendessen</span>
+          </label>
+        </fieldset>
+
+        <label>
+          Zutaten
+          <textarea
+            id="recipe-ingredients"
+            name="ingredients"
+            rows="6"
+            placeholder="Eine Zutat pro Zeile, z. B.&#10;2 Zucchini&#10;500 g Tomaten&#10;1 Packung Lasagneplatten"
+            required
+          ></textarea>
+        </label>
+
+        <button class="primary-button" type="submit">Rezept speichern</button>
+      </form>
+    </section>
   </div>
 
   <template id="recipe-card-template">
@@ -126,6 +146,7 @@
     <section class="day-card">
       <div class="day-card-header">
         <h3></h3>
+        <p class="day-card-subtitle"></p>
       </div>
       <div class="meal-slots"></div>
     </section>
