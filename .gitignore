@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+meal-planner.db
+meal-planner.db-shm
+meal-planner.db-wal
+*.db
+*.db-shm
+*.db-wal

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wochenplaner fuer Rezepte</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Wochenplanung fuer dein Essen</p>
+        <h1>Rezepte ziehen, Woche fuellen, Einkaufsliste erzeugen.</h1>
+        <p class="hero-copy">
+          Lege eigene Rezepte mit Zutaten an, ziehe sie per Drag-and-Drop auf einen Wochentag
+          und sammle daraus automatisch deine Einkaufsliste.
+        </p>
+        <p id="sync-status" class="sync-status">Verbinde mit gemeinsamem Plan...</p>
+      </div>
+      <div class="hero-actions">
+        <button id="refresh-data" class="secondary-button" type="button">Jetzt synchronisieren</button>
+        <button id="reset-week" class="secondary-button" type="button">Woche leeren</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="panel panel-accent">
+        <div class="panel-header">
+          <div>
+            <p class="section-kicker">Rezepte</p>
+            <h2>Neues Rezept anlegen</h2>
+          </div>
+        </div>
+
+        <form id="recipe-form" class="recipe-form">
+          <label>
+            Rezeptname
+            <input id="recipe-name" name="name" type="text" placeholder="Zum Beispiel Gemueselasagne" required>
+          </label>
+
+          <label>
+            Zutaten
+            <textarea
+              id="recipe-ingredients"
+              name="ingredients"
+              rows="5"
+              placeholder="Eine Zutat pro Zeile, z. B.&#10;2 Zucchini&#10;500 g Tomaten&#10;1 Packung Lasagneplatten"
+              required
+            ></textarea>
+          </label>
+
+          <button class="primary-button" type="submit">Rezept speichern</button>
+        </form>
+
+        <div class="panel-header recipes-header">
+          <div>
+            <p class="section-kicker">Bibliothek</p>
+            <h2>Per Drag-and-Drop verplanen</h2>
+          </div>
+        </div>
+        <div id="recipe-library" class="recipe-library" aria-live="polite"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="section-kicker">Planung</p>
+            <h2>Deine Woche</h2>
+          </div>
+          <p class="drop-hint">Rezepte auf einen Tag ziehen oder mit Klick entfernen.</p>
+        </div>
+        <div id="week-board" class="week-board"></div>
+      </section>
+
+      <section class="panel shopping-panel">
+        <div class="panel-header">
+          <div>
+            <p class="section-kicker">Einkauf</p>
+            <h2>Automatische Einkaufsliste</h2>
+          </div>
+          <button id="copy-shopping-list" class="secondary-button" type="button">Liste kopieren</button>
+        </div>
+        <ul id="shopping-list" class="shopping-list"></ul>
+      </section>
+    </main>
+  </div>
+
+  <template id="recipe-card-template">
+    <article class="recipe-card" draggable="true">
+      <div>
+        <h3></h3>
+        <p class="ingredient-preview"></p>
+      </div>
+      <button class="ghost-button delete-recipe" type="button">Loeschen</button>
+    </article>
+  </template>
+
+  <template id="day-card-template">
+    <section class="day-card">
+      <div class="day-card-header">
+        <h3></h3>
+        <span class="day-subtitle">Rezept hier ablegen</span>
+      </div>
+      <div class="drop-zone"></div>
+    </section>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>

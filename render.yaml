@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: loxiwochenplan
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app.py
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_PATH
+        value: /var/data/meal-planner.db
+    disk:
+      name: meal-planner-data
+      mountPath: /var/data
+      sizeGB: 1
