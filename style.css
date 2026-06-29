@@ -55,7 +55,8 @@ textarea {
 .section-kicker,
 .drop-hint,
 .day-subtitle,
-.ingredient-preview {
+.ingredient-preview,
+.recipe-servings {
   color: var(--muted);
 }
 
@@ -200,7 +201,8 @@ textarea:focus {
 
 .recipe-library,
 .shopping-list,
-.drop-zone {
+.drop-zone,
+.meal-slots {
   display: grid;
   gap: 12px;
 }
@@ -231,6 +233,11 @@ textarea:focus {
   line-height: 1.45;
 }
 
+.recipe-servings {
+  margin: 10px 0 0;
+  font-weight: 700;
+}
+
 .week-board {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -248,9 +255,27 @@ textarea:focus {
   margin-bottom: 14px;
 }
 
+.meal-slot {
+  display: grid;
+  gap: 10px;
+}
+
+.meal-slot-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.meal-slot-header h4,
+.planned-recipe h4 {
+  margin: 0;
+  font-family: "Fraunces", serif;
+  font-size: 1.12rem;
+}
+
 .day-subtitle {
   display: inline-block;
-  margin-top: 6px;
   font-size: 0.95rem;
 }
 
@@ -268,7 +293,30 @@ textarea:focus {
 }
 
 .planned-recipe {
+  align-items: flex-start;
+}
+
+.planned-actions {
+  display: grid;
+  gap: 10px;
+  justify-items: end;
+}
+
+.serving-controls {
+  display: flex;
   align-items: center;
+  gap: 8px;
+}
+
+.serving-button {
+  min-width: 40px;
+  padding-inline: 0;
+}
+
+.serving-value {
+  min-width: 68px;
+  text-align: center;
+  font-weight: 700;
 }
 
 .shopping-panel {
@@ -288,6 +336,23 @@ textarea:focus {
   border: 1px solid rgba(118, 84, 42, 0.12);
 }
 
+.shopping-item-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.shopping-item-label input {
+  width: 18px;
+  height: 18px;
+}
+
+.shopping-item-checked {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
 .empty-state {
   padding: 16px;
   border-radius: var(--radius-small);
@@ -301,7 +366,7 @@ textarea:focus {
   }
 
   .week-board {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
   }
 }
 

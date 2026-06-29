@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import sqlite3
 import uuid
 from pathlib import Path
@@ -18,15 +19,21 @@ DAYS = [
     "Samstag",
     "Sonntag",
 ]
+MEALS = ["Fruehstueck", "Mittag", "Abendessen"]
+INGREDIENT_PATTERN = re.compile(
+    r"^\s*(?P<amount>\d+(?:[.,]\d+)?)\s*(?P<unit>[A-Za-z]+)?\s+(?P<name>.+?)\s*$"
+)
 DEFAULT_RECIPES = [
     {
         "id": str(uuid.uuid4()),
         "name": "One-Pot Pasta",
+        "base_servings": 2,
         "ingredients": ["500 g Pasta", "250 g Cherrytomaten", "1 Zwiebel", "2 Knoblauchzehen"],
     },
     {
         "id": str(uuid.uuid4()),
         "name": "Ofengemuese mit Feta",
+        "base_servings": 4,
         "ingredients": ["3 Karotten", "2 Paprika", "1 Zucchini", "200 g Feta"],
     },
 ]
@@ -41,6 +48,147 @@ def get_connection():
     return connection
 
 
+def normalize_key(value):
+    return " ".join(str(value).strip().lower().split())
+
+
+def recipe_servings_for(connection, recipe_id):
+    row = connection.execute(
+        "SELECT base_servings FROM recipes WHERE id = ?",
+        (recipe_id,),
+    ).fetchone()
+    return row["base_servings"] if row else 2
+
+
+def format_amount(value):
+    rounded = round(value, 2)
+    if abs(rounded - round(rounded)) < 0.01:
+        return str(int(round(rounded)))
+    text = f"{rounded:.2f}".rstrip("0").rstrip(".")
+    return text.replace(".", ",")
+
+
+def parse_ingredient(ingredient):
+    match = INGREDIENT_PATTERN.match(ingredient)
+    if not match:
+        return {
+            "kind": "raw",
+            "key": f"raw:{normalize_key(ingredient)}",
+            "label": ingredient,
+        }
+
+    amount = float(match.group("amount").replace(",", "."))
+    unit = (match.group("unit") or "").strip().lower()
+    name = match.group("name").strip()
+    return {
+        "kind": "scaled",
+        "key": f"scaled:{normalize_key(name)}|{unit}",
+        "amount": amount,
+        "unit": unit,
+        "name": name,
+    }
+
+
+def build_shopping_list(connection, recipes):
+    recipe_map = {recipe["id"]: recipe for recipe in recipes}
+    checked_state = {
+        row["item_key"]: bool(row["checked"])
+        for row in connection.execute("SELECT item_key, checked FROM shopping_state")
+    }
+    aggregated = {}
+
+    for row in connection.execute(
+        "SELECT day, meal, recipe_id, servings FROM meal_plan WHERE recipe_id IS NOT NULL"
+    ):
+        recipe = recipe_map.get(row["recipe_id"])
+        if recipe is None:
+            continue
+
+        planned_servings = row["servings"] or recipe["baseServings"]
+        scale_factor = planned_servings / max(recipe["baseServings"], 1)
+
+        for ingredient in recipe["ingredients"]:
+            parsed = parse_ingredient(ingredient)
+            if parsed["kind"] == "scaled":
+                entry = aggregated.setdefault(
+                    parsed["key"],
+                    {
+                        "kind": "scaled",
+                        "name": parsed["name"],
+                        "unit": parsed["unit"],
+                        "amount": 0,
+                    },
+                )
+                entry["amount"] += parsed["amount"] * scale_factor
+            else:
+                entry = aggregated.setdefault(
+                    parsed["key"],
+                    {
+                        "kind": "raw",
+                        "label": parsed["label"],
+                        "count": 0,
+                    },
+                )
+                entry["count"] += scale_factor
+
+    items = []
+    for item_key, entry in aggregated.items():
+        if entry["kind"] == "scaled":
+            unit_part = f" {entry['unit']}" if entry["unit"] else ""
+            label = f"{format_amount(entry['amount'])}{unit_part} {entry['name']}"
+        else:
+            if abs(entry["count"] - 1) < 0.01:
+                label = entry["label"]
+            else:
+                label = f"{format_amount(entry['count'])} x {entry['label']}"
+
+        items.append(
+            {
+                "id": item_key,
+                "label": label,
+                "checked": checked_state.get(item_key, False),
+            }
+        )
+
+    items.sort(key=lambda item: normalize_key(item["label"]))
+    return items
+
+
+def serialize_state():
+    with get_connection() as connection:
+        recipes = [
+            {
+                "id": row["id"],
+                "name": row["name"],
+                "baseServings": row["base_servings"],
+                "ingredients": json.loads(row["ingredients"]),
+            }
+            for row in connection.execute(
+                "SELECT id, name, base_servings, ingredients FROM recipes ORDER BY created_at DESC, name ASC"
+            )
+        ]
+        week_plan = {
+            day: {meal: {"recipeId": None, "servings": None} for meal in MEALS}
+            for day in DAYS
+        }
+        for row in connection.execute(
+            "SELECT day, meal, recipe_id, servings FROM meal_plan ORDER BY day, meal"
+        ):
+            if row["day"] in week_plan and row["meal"] in week_plan[row["day"]]:
+                week_plan[row["day"]][row["meal"]] = {
+                    "recipeId": row["recipe_id"],
+                    "servings": row["servings"],
+                }
+
+        shopping_list = build_shopping_list(connection, recipes)
+
+    return {
+        "recipes": recipes,
+        "weekPlan": week_plan,
+        "shoppingList": shopping_list,
+    }
+
+
 def ensure_database():
     DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
 
@@ -51,56 +199,97 @@ def ensure_database():
             CREATE TABLE IF NOT EXISTS recipes (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
+                base_servings INTEGER NOT NULL DEFAULT 2,
                 ingredients TEXT NOT NULL,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
             """
         )
+
+        recipe_columns = {
+            row["name"] for row in connection.execute("PRAGMA table_info(recipes)")
+        }
+        if "base_servings" not in recipe_columns:
+            connection.execute(
+                "ALTER TABLE recipes ADD COLUMN base_servings INTEGER NOT NULL DEFAULT 2"
+            )
+
+        legacy_week_plan_rows = []
+        week_plan_exists = connection.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'week_plan'"
+        ).fetchone()
+        if week_plan_exists:
+            week_plan_columns = {
+                row["name"] for row in connection.execute("PRAGMA table_info(week_plan)")
+            }
+            if "meal" not in week_plan_columns and "recipe_id" in week_plan_columns:
+                legacy_week_plan_rows = connection.execute(
+                    "SELECT day, recipe_id FROM week_plan"
+                ).fetchall()
+
         connection.execute(
             """
-            CREATE TABLE IF NOT EXISTS week_plan (
-                day TEXT PRIMARY KEY,
-                recipe_id TEXT REFERENCES recipes(id) ON DELETE SET NULL
+            CREATE TABLE IF NOT EXISTS meal_plan (
+                day TEXT NOT NULL,
+                meal TEXT NOT NULL,
+                recipe_id TEXT REFERENCES recipes(id) ON DELETE SET NULL,
+                servings INTEGER,
+                PRIMARY KEY (day, meal)
+            )
+            """
+        )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS shopping_state (
+                item_key TEXT PRIMARY KEY,
+                checked INTEGER NOT NULL DEFAULT 0
             )
             """
         )
 
-        existing_days = {
-            row["day"] for row in connection.execute("SELECT day FROM week_plan")
+        existing_slots = {
+            (row["day"], row["meal"])
+            for row in connection.execute("SELECT day, meal FROM meal_plan")
         }
         for day in DAYS:
-            if day not in existing_days:
-                connection.execute("INSERT INTO week_plan (day, recipe_id) VALUES (?, NULL)", (day,))
+            for meal in MEALS:
+                if (day, meal) not in existing_slots:
+                    connection.execute(
+                        "INSERT INTO meal_plan (day, meal, recipe_id, servings) VALUES (?, ?, NULL, NULL)",
+                        (day, meal),
+                    )
 
         recipe_count = connection.execute("SELECT COUNT(*) AS count FROM recipes").fetchone()["count"]
         if recipe_count == 0:
             connection.executemany(
-                "INSERT INTO recipes (id, name, ingredients) VALUES (?, ?, ?)",
+                "INSERT INTO recipes (id, name, base_servings, ingredients) VALUES (?, ?, ?, ?)",
                 [
-                    (recipe["id"], recipe["name"], json.dumps(recipe["ingredients"]))
+                    (
+                        recipe["id"],
+                        recipe["name"],
+                        recipe["base_servings"],
+                        json.dumps(recipe["ingredients"]),
+                    )
                     for recipe in DEFAULT_RECIPES
                 ],
             )
 
-
-def serialize_state():
-    with get_connection() as connection:
-        recipes = [
-            {
-                "id": row["id"],
-                "name": row["name"],
-                "ingredients": json.loads(row["ingredients"]),
-            }
-            for row in connection.execute(
-                "SELECT id, name, ingredients FROM recipes ORDER BY created_at DESC, name ASC"
-            )
-        ]
-        week_plan = {
-            row["day"]: row["recipe_id"]
-            for row in connection.execute("SELECT day, recipe_id FROM week_plan")
-        }
-
-    return {"recipes": recipes, "weekPlan": week_plan}
+        assigned_slots = connection.execute(
+            "SELECT COUNT(*) AS count FROM meal_plan WHERE recipe_id IS NOT NULL"
+        ).fetchone()["count"]
+        if assigned_slots == 0 and legacy_week_plan_rows:
+            for row in legacy_week_plan_rows:
+                if not row["recipe_id"]:
+                    continue
+                connection.execute(
+                    "UPDATE meal_plan SET recipe_id = ?, servings = ? WHERE day = ? AND meal = ?",
+                    (
+                        row["recipe_id"],
+                        recipe_servings_for(connection, row["recipe_id"]),
+                        row["day"],
+                        "Abendessen",
+                    ),
+                )
 
 
 @app.get("/api/health")
@@ -117,10 +306,19 @@ def get_state():
 def create_recipe():
     payload = request.get_json(silent=True) or {}
     name = str(payload.get("name", "")).strip()
+    base_servings = payload.get("baseServings")
     ingredients = payload.get("ingredients", [])
 
     if not name or not isinstance(ingredients, list):
         return jsonify({"error": "Ungueltige Rezeptdaten."}), 400
+
+    try:
+        base_servings = int(base_servings)
+    except (TypeError, ValueError):
+        return jsonify({"error": "Bitte eine gueltige Personenzahl angeben."}), 400
+
+    if base_servings < 1:
+        return jsonify({"error": "Die Personenzahl muss mindestens 1 sein."}), 400
 
     cleaned_ingredients = [str(item).strip() for item in ingredients if str(item).strip()]
     if not cleaned_ingredients:
@@ -128,8 +326,8 @@ def create_recipe():
 
     with get_connection() as connection:
         connection.execute(
-            "INSERT INTO recipes (id, name, ingredients) VALUES (?, ?, ?)",
-            (str(uuid.uuid4()), name, json.dumps(cleaned_ingredients)),
+            "INSERT INTO recipes (id, name, base_servings, ingredients) VALUES (?, ?, ?, ?)",
+            (str(uuid.uuid4()), name, base_servings, json.dumps(cleaned_ingredients)),
         )
 
     return jsonify(serialize_state())
@@ -147,23 +345,39 @@ def delete_recipe(recipe_id):
 def update_week_plan():
     payload = request.get_json(silent=True) or {}
     day = payload.get("day")
+    meal = payload.get("meal")
     recipe_id = payload.get("recipeId")
+    servings = payload.get("servings")
 
-    if day not in DAYS:
-        return jsonify({"error": "Unbekannter Wochentag."}), 400
+    if day not in DAYS or meal not in MEALS:
+        return jsonify({"error": "Unbekannter Plan-Slot."}), 400
 
     with get_connection() as connection:
-        if recipe_id is not None:
-            recipe_exists = connection.execute(
-                "SELECT 1 FROM recipes WHERE id = ?",
-                (recipe_id,),
-            ).fetchone()
-            if recipe_exists is None:
-                return jsonify({"error": "Rezept nicht gefunden."}), 404
+        if recipe_id is None:
+            connection.execute(
+                "UPDATE meal_plan SET recipe_id = NULL, servings = NULL WHERE day = ? AND meal = ?",
+                (day, meal),
+            )
+            return jsonify(serialize_state())
+
+        recipe = connection.execute(
+            "SELECT id, base_servings FROM recipes WHERE id = ?",
+            (recipe_id,),
+        ).fetchone()
+        if recipe is None:
+            return jsonify({"error": "Rezept nicht gefunden."}), 404
+
+        try:
+            servings = int(servings) if servings is not None else recipe["base_servings"]
+        except (TypeError, ValueError):
+            return jsonify({"error": "Ungueltige Personenzahl fuer den Plan."}), 400
+
+        if servings < 1:
+            return jsonify({"error": "Die Personenzahl im Plan muss mindestens 1 sein."}), 400
 
         connection.execute(
-            "UPDATE week_plan SET recipe_id = ? WHERE day = ?",
-            (recipe_id, day),
+            "UPDATE meal_plan SET recipe_id = ?, servings = ? WHERE day = ? AND meal = ?",
+            (recipe_id, servings, day, meal),
         )
 
     return jsonify(serialize_state())
@@ -172,7 +386,28 @@ def update_week_plan():
 @app.post("/api/week-plan/reset")
 def reset_week_plan():
     with get_connection() as connection:
-        connection.execute("UPDATE week_plan SET recipe_id = NULL")
+        connection.execute("UPDATE meal_plan SET recipe_id = NULL, servings = NULL")
+
+    return jsonify(serialize_state())
+
+
+@app.put("/api/shopping-list")
+def update_shopping_item():
+    payload = request.get_json(silent=True) or {}
+    item_id = str(payload.get("itemId", "")).strip()
+    checked = bool(payload.get("checked", False))
+
+    if not item_id:
+        return jsonify({"error": "Ungueltiger Einkaufslisten-Eintrag."}), 400
+
+    with get_connection() as connection:
+        connection.execute(
+            """
+            INSERT INTO shopping_state (item_key, checked) VALUES (?, ?)
+            ON CONFLICT(item_key) DO UPDATE SET checked = excluded.checked
+            """,
+            (item_id, int(checked)),
+        )
 
     return jsonify(serialize_state())
 

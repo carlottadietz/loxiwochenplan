@@ -1,33 +1,26 @@
-const DAYS = [
-  "Montag",
-  "Dienstag",
-  "Mittwoch",
-  "Donnerstag",
-  "Freitag",
-  "Samstag",
-  "Sonntag"
-];
-
+const DAYS = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
+const MEALS = ["Fruehstueck", "Mittag", "Abendessen"];
 const POLLING_INTERVAL_MS = 15000;
 
-const emptyWeekPlan = {
-  Montag: null,
-  Dienstag: null,
-  Mittwoch: null,
-  Donnerstag: null,
-  Freitag: null,
-  Samstag: null,
-  Sonntag: null
-};
+function createEmptyWeekPlan() {
+  return Object.fromEntries(
+    DAYS.map((day) => [
+      day,
+      Object.fromEntries(MEALS.map((meal) => [meal, { recipeId: null, servings: null }]))
+    ])
+  );
+}
 
 let state = {
   recipes: [],
-  weekPlan: { ...emptyWeekPlan }
+  weekPlan: createEmptyWeekPlan(),
+  shoppingList: []
 };
 let draggedRecipeId = null;
 
 const recipeForm = document.querySelector("#recipe-form");
 const recipeNameInput = document.querySelector("#recipe-name");
+const recipeServingsInput = document.querySelector("#recipe-servings");
 const recipeIngredientsInput = document.querySelector("#recipe-ingredients");
 const recipeLibrary = document.querySelector("#recipe-library");
 const weekBoard = document.querySelector("#week-board");
@@ -42,9 +35,7 @@ const dayCardTemplate = document.querySelector("#day-card-template");
 recipeForm.addEventListener("submit", handleRecipeSubmit);
 resetWeekButton.addEventListener("click", resetWeek);
 copyShoppingListButton.addEventListener("click", copyShoppingList);
-refreshDataButton.addEventListener("click", () => {
-  syncState({ announce: true });
-});
+refreshDataButton.addEventListener("click", () => syncState({ announce: true }));
 
 initialize();
 
@@ -53,12 +44,11 @@ async function initialize() {
     const nextState = await apiFetch("/api/state");
     replaceState(nextState);
     updateSyncStatus("Gemeinsamer Plan ist synchronisiert.");
-    render();
   } catch {
     updateSyncStatus("Server nicht erreichbar. Bitte spaeter erneut laden.");
-    render();
   }
 
+  render();
   window.setInterval(() => {
     syncState();
   }, POLLING_INTERVAL_MS);
@@ -83,22 +73,25 @@ async function handleRecipeSubmit(event) {
   event.preventDefault();
 
   const name = recipeNameInput.value.trim();
+  const baseServings = Number(recipeServingsInput.value);
   const ingredients = recipeIngredientsInput.value
     .split("\n")
     .map((entry) => entry.trim())
     .filter(Boolean);
 
-  if (!name || ingredients.length === 0) {
+  if (!name || ingredients.length === 0 || baseServings < 1) {
+    updateSyncStatus("Bitte Rezeptname, Personenanzahl und Zutaten angeben.");
     return;
   }
 
   try {
     const nextState = await apiFetch("/api/recipes", {
       method: "POST",
-      body: JSON.stringify({ name, ingredients })
+      body: JSON.stringify({ name, baseServings, ingredients })
     });
     replaceState(nextState);
     recipeForm.reset();
+    recipeServingsInput.value = 2;
     updateSyncStatus("Rezept fuer alle gespeichert.");
     render();
   } catch {
@@ -118,15 +111,13 @@ async function resetWeek() {
 }
 
 async function copyShoppingList() {
-  const items = buildShoppingList();
-  const text = items.join("\n");
-
-  if (!text) {
+  const items = state.shoppingList.map((item) => `${item.checked ? "[x]" : "[ ]"} ${item.label}`);
+  if (items.length === 0) {
     return;
   }
 
   try {
-    await navigator.clipboard.writeText(text);
+    await navigator.clipboard.writeText(items.join("\n"));
     copyShoppingListButton.textContent = "Kopiert";
     window.setTimeout(() => {
       copyShoppingListButton.textContent = "Liste kopieren";
@@ -154,6 +145,7 @@ function renderRecipeLibrary() {
     const card = recipeCardTemplate.content.firstElementChild.cloneNode(true);
     card.dataset.recipeId = recipe.id;
     card.querySelector("h3").textContent = recipe.name;
+    card.querySelector(".recipe-servings").textContent = `Basis fuer ${recipe.baseServings} Personen`;
     card.querySelector(".ingredient-preview").textContent = recipe.ingredients.join(" • ");
 
     card.addEventListener("dragstart", (event) => {
@@ -184,124 +176,220 @@ function renderWeekBoard() {
 
   DAYS.forEach((day) => {
     const dayCard = dayCardTemplate.content.firstElementChild.cloneNode(true);
-    const dropZone = dayCard.querySelector(".drop-zone");
-
     dayCard.querySelector("h3").textContent = day;
+    const mealsContainer = dayCard.querySelector(".meal-slots");
 
-    dropZone.addEventListener("dragover", (event) => {
-      event.preventDefault();
-      dropZone.classList.add("drag-over");
+    MEALS.forEach((meal) => {
+      mealsContainer.append(createMealSlot(day, meal));
     });
-
-    dropZone.addEventListener("dragleave", () => {
-      dropZone.classList.remove("drag-over");
-    });
-
-    dropZone.addEventListener("drop", async (event) => {
-      event.preventDefault();
-      dropZone.classList.remove("drag-over");
-
-      const droppedRecipeId =
-        event.dataTransfer?.getData("application/x-recipe-id") ||
-        event.dataTransfer?.getData("text/plain") ||
-        draggedRecipeId;
-
-      if (!droppedRecipeId) {
-        return;
-      }
-
-      try {
-        const nextState = await apiFetch("/api/week-plan", {
-          method: "PUT",
-          body: JSON.stringify({ day, recipeId: droppedRecipeId })
-        });
-        replaceState(nextState);
-        updateSyncStatus(`Plan fuer ${day} gespeichert.`);
-        render();
-      } catch {
-        updateSyncStatus(`Plan fuer ${day} konnte nicht gespeichert werden.`);
-      }
-    });
-
-    const plannedRecipeId = state.weekPlan[day];
-    const plannedRecipe = state.recipes.find((recipe) => recipe.id === plannedRecipeId);
-
-    if (!plannedRecipe) {
-      dropZone.append(createEmptyState("Noch kein Rezept eingeplant."));
-    } else {
-      const plannedCard = document.createElement("article");
-      plannedCard.className = "planned-recipe";
-
-      const content = document.createElement("div");
-      const title = document.createElement("h3");
-      title.textContent = plannedRecipe.name;
-      const ingredients = document.createElement("p");
-      ingredients.className = "ingredient-preview";
-      ingredients.textContent = plannedRecipe.ingredients.join(" • ");
-      content.append(title, ingredients);
-
-      const clearButton = document.createElement("button");
-      clearButton.type = "button";
-      clearButton.className = "ghost-button";
-      clearButton.textContent = "Entfernen";
-      clearButton.addEventListener("click", async () => {
-        try {
-          const nextState = await apiFetch("/api/week-plan", {
-            method: "PUT",
-            body: JSON.stringify({ day, recipeId: null })
-          });
-          replaceState(nextState);
-          updateSyncStatus(`${day} wurde geleert.`);
-          render();
-        } catch {
-          updateSyncStatus(`${day} konnte nicht aktualisiert werden.`);
-        }
-      });
-
-      plannedCard.append(content, clearButton);
-      dropZone.append(plannedCard);
-    }
 
     weekBoard.append(dayCard);
   });
 }
 
+function createMealSlot(day, meal) {
+  const mealSlot = document.createElement("section");
+  mealSlot.className = "meal-slot";
+
+  const heading = document.createElement("div");
+  heading.className = "meal-slot-header";
+  const title = document.createElement("h4");
+  title.textContent = meal;
+  const subtitle = document.createElement("span");
+  subtitle.className = "day-subtitle";
+  subtitle.textContent = "Rezept hier ablegen";
+  heading.append(title, subtitle);
+
+  const dropZone = document.createElement("div");
+  dropZone.className = "drop-zone";
+  dropZone.dataset.day = day;
+  dropZone.dataset.meal = meal;
+
+  dropZone.addEventListener("dragover", (event) => {
+    event.preventDefault();
+    dropZone.classList.add("drag-over");
+  });
+
+  dropZone.addEventListener("dragleave", () => {
+    dropZone.classList.remove("drag-over");
+  });
+
+  dropZone.addEventListener("drop", async (event) => {
+    event.preventDefault();
+    dropZone.classList.remove("drag-over");
+
+    const droppedRecipeId =
+      event.dataTransfer?.getData("application/x-recipe-id") ||
+      event.dataTransfer?.getData("text/plain") ||
+      draggedRecipeId;
+
+    if (!droppedRecipeId) {
+      return;
+    }
+
+    const recipe = state.recipes.find((entry) => entry.id === droppedRecipeId);
+    if (!recipe) {
+      return;
+    }
+
+    try {
+      const nextState = await apiFetch("/api/week-plan", {
+        method: "PUT",
+        body: JSON.stringify({
+          day,
+          meal,
+          recipeId: droppedRecipeId,
+          servings: recipe.baseServings
+        })
+      });
+      replaceState(nextState);
+      updateSyncStatus(`${day} ${meal} gespeichert.`);
+      render();
+    } catch {
+      updateSyncStatus(`${day} ${meal} konnte nicht gespeichert werden.`);
+    }
+  });
+
+  const plannedEntry = state.weekPlan[day]?.[meal] || { recipeId: null, servings: null };
+  const plannedRecipe = state.recipes.find((recipe) => recipe.id === plannedEntry.recipeId);
+
+  if (!plannedRecipe) {
+    dropZone.append(createEmptyState("Noch kein Rezept eingeplant."));
+  } else {
+    dropZone.append(createPlannedRecipeCard(day, meal, plannedRecipe, plannedEntry.servings));
+  }
+
+  mealSlot.append(heading, dropZone);
+  return mealSlot;
+}
+
+function createPlannedRecipeCard(day, meal, recipe, servings) {
+  const plannedCard = document.createElement("article");
+  plannedCard.className = "planned-recipe";
+
+  const content = document.createElement("div");
+  const title = document.createElement("h4");
+  title.textContent = recipe.name;
+  const meta = document.createElement("p");
+  meta.className = "ingredient-preview";
+  meta.textContent = `${servings} Personen • Basis ${recipe.baseServings}`;
+  const ingredients = document.createElement("p");
+  ingredients.className = "ingredient-preview";
+  ingredients.textContent = recipe.ingredients.join(" • ");
+  content.append(title, meta, ingredients);
+
+  const actions = document.createElement("div");
+  actions.className = "planned-actions";
+
+  const servingControls = document.createElement("div");
+  servingControls.className = "serving-controls";
+
+  const decreaseButton = document.createElement("button");
+  decreaseButton.type = "button";
+  decreaseButton.className = "ghost-button serving-button";
+  decreaseButton.textContent = "-";
+  decreaseButton.disabled = servings <= 1;
+  decreaseButton.addEventListener("click", () => {
+    updatePlannedServings(day, meal, recipe.id, servings - 1);
+  });
+
+  const servingValue = document.createElement("span");
+  servingValue.className = "serving-value";
+  servingValue.textContent = `${servings} Pers.`;
+
+  const increaseButton = document.createElement("button");
+  increaseButton.type = "button";
+  increaseButton.className = "ghost-button serving-button";
+  increaseButton.textContent = "+";
+  increaseButton.addEventListener("click", () => {
+    updatePlannedServings(day, meal, recipe.id, servings + 1);
+  });
+
+  servingControls.append(decreaseButton, servingValue, increaseButton);
+
+  const clearButton = document.createElement("button");
+  clearButton.type = "button";
+  clearButton.className = "ghost-button";
+  clearButton.textContent = "Entfernen";
+  clearButton.addEventListener("click", async () => {
+    try {
+      const nextState = await apiFetch("/api/week-plan", {
+        method: "PUT",
+        body: JSON.stringify({ day, meal, recipeId: null, servings: null })
+      });
+      replaceState(nextState);
+      updateSyncStatus(`${day} ${meal} wurde geleert.`);
+      render();
+    } catch {
+      updateSyncStatus(`${day} ${meal} konnte nicht aktualisiert werden.`);
+    }
+  });
+
+  actions.append(servingControls, clearButton);
+  plannedCard.append(content, actions);
+  return plannedCard;
+}
+
+async function updatePlannedServings(day, meal, recipeId, servings) {
+  if (servings < 1) {
+    return;
+  }
+
+  try {
+    const nextState = await apiFetch("/api/week-plan", {
+      method: "PUT",
+      body: JSON.stringify({ day, meal, recipeId, servings })
+    });
+    replaceState(nextState);
+    updateSyncStatus(`${day} ${meal} auf ${servings} Personen gesetzt.`);
+    render();
+  } catch {
+    updateSyncStatus("Personenzahl konnte nicht aktualisiert werden.");
+  }
+}
+
 function renderShoppingList() {
   shoppingList.replaceChildren();
 
-  const items = buildShoppingList();
-
-  if (items.length === 0) {
+  if (state.shoppingList.length === 0) {
     shoppingList.append(createEmptyState("Plane Rezepte ein, damit hier deine Einkaufsliste erscheint."));
     return;
   }
 
-  items.forEach((item) => {
+  state.shoppingList.forEach((item) => {
     const listItem = document.createElement("li");
-    listItem.textContent = item;
-    shoppingList.append(listItem);
-  });
-}
+    listItem.className = "shopping-item";
 
-function buildShoppingList() {
-  const ingredientMap = new Map();
+    const label = document.createElement("label");
+    label.className = "shopping-item-label";
 
-  Object.values(state.weekPlan)
-    .filter(Boolean)
-    .forEach((recipeId) => {
-      const recipe = state.recipes.find((entry) => entry.id === recipeId);
-
-      if (!recipe) {
-        return;
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = item.checked;
+    checkbox.addEventListener("change", async () => {
+      try {
+        const nextState = await apiFetch("/api/shopping-list", {
+          method: "PUT",
+          body: JSON.stringify({ itemId: item.id, checked: checkbox.checked })
+        });
+        replaceState(nextState);
+        render();
+      } catch {
+        checkbox.checked = !checkbox.checked;
+        updateSyncStatus("Einkaufslisten-Eintrag konnte nicht gespeichert werden.");
       }
-
-      recipe.ingredients.forEach((ingredient) => {
-        const key = ingredient.toLowerCase();
-        ingredientMap.set(key, ingredientMap.has(key) ? `${ingredientMap.get(key)}, ${ingredient}` : ingredient);
-      });
     });
 
-  return Array.from(ingredientMap.values());
+    const text = document.createElement("span");
+    text.textContent = item.label;
+    if (item.checked) {
+      text.classList.add("shopping-item-checked");
+    }
+
+    label.append(checkbox, text);
+    listItem.append(label);
+    shoppingList.append(listItem);
+  });
 }
 
 async function deleteRecipe(recipeId) {
@@ -325,8 +413,19 @@ function createEmptyState(text) {
 function replaceState(nextState) {
   state = {
     recipes: Array.isArray(nextState.recipes) ? nextState.recipes : [],
-    weekPlan: { ...emptyWeekPlan, ...(nextState.weekPlan || {}) }
+    weekPlan: createEmptyWeekPlan(),
+    shoppingList: Array.isArray(nextState.shoppingList) ? nextState.shoppingList : []
   };
+
+  DAYS.forEach((day) => {
+    MEALS.forEach((meal) => {
+      const entry = nextState.weekPlan?.[day]?.[meal];
+      state.weekPlan[day][meal] = {
+        recipeId: entry?.recipeId || null,
+        servings: entry?.servings || null
+      };
+    });
+  });
 }
 
 function updateSyncStatus(message) {

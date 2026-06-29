@@ -43,6 +43,11 @@
           </label>
 
           <label>
+            Basis fuer Personen
+            <input id="recipe-servings" name="baseServings" type="number" min="1" value="2" required>
+          </label>
+
+          <label>
             Zutaten
             <textarea
               id="recipe-ingredients"
@@ -93,6 +98,7 @@
     <article class="recipe-card" draggable="true">
       <div>
         <h3></h3>
+        <p class="recipe-servings"></p>
         <p class="ingredient-preview"></p>
       </div>
       <button class="ghost-button delete-recipe" type="button">Loeschen</button>
@@ -103,9 +109,8 @@
     <section class="day-card">
       <div class="day-card-header">
         <h3></h3>
-        <span class="day-subtitle">Rezept hier ablegen</span>
       </div>
-      <div class="drop-zone"></div>
+      <div class="meal-slots"></div>
     </section>
   </template>
 

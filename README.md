@@ -8,6 +8,10 @@ Eine kleine Web-App fuer gemeinsame Essensplanung mit Rezepten, Drag-and-Drop-Wo
 - Daten werden serverseitig in SQLite gespeichert
 - Zwei Personen sehen denselben Plan
 - Das Frontend synchronisiert den Stand regelmaessig neu
+- Rezepte haben eine Basis-Personenzahl
+- Jeder Tag ist in Fruehstueck, Mittag und Abendessen aufgeteilt
+- Die Personenzahl pro eingeplantem Rezept kann im Wochenplan angepasst werden
+- Die Einkaufsliste ist direkt auf der Website abhakbar
 
 ## Lokal starten
 
@@ -44,10 +48,14 @@ Die passende Konfiguration ist bereits in [render.yaml](render.yaml) hinterlegt.
 - Die Zusammenarbeit ist gemeinsam, aber nicht in Echtzeit per WebSocket.
 - Der Client synchronisiert automatisch in Intervallen und per Klick auf `Jetzt synchronisieren`.
 - Bei gleichzeitigen Aenderungen gilt praktisch `last write wins`.
+- Mengen in der Einkaufsliste werden anhand der Personenzahl im Wochenplan hoch- oder runtergerechnet, wenn der Anfang der Zutat numerisch ist.
 
 ## Funktionen
 
 - Rezepte mit Zutaten anlegen
+- Basis-Personenzahl pro Rezept speichern
 - Rezepte fuer alle speichern und loeschen
-- Rezepte per Drag-and-Drop auf Wochentage ziehen
+- Rezepte per Drag-and-Drop auf Fruehstueck, Mittag oder Abendessen ziehen
+- Personenzahl pro eingeplantem Rezept direkt im Wochenplan aendern
 - Einkaufsliste aus allen eingeplanten Rezepten erzeugen
+- Einkaufsliste direkt im Browser abhaken
