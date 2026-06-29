@@ -16,12 +16,12 @@ let state = {
   weekPlan: createEmptyWeekPlan(),
   shoppingList: []
 };
-let draggedRecipeId = null;
 
 const recipeForm = document.querySelector("#recipe-form");
 const recipeNameInput = document.querySelector("#recipe-name");
 const recipeServingsInput = document.querySelector("#recipe-servings");
 const recipeIngredientsInput = document.querySelector("#recipe-ingredients");
+const recipeTagInputs = Array.from(document.querySelectorAll('input[name="recipe-tags"]'));
 const recipeLibrary = document.querySelector("#recipe-library");
 const weekBoard = document.querySelector("#week-board");
 const shoppingList = document.querySelector("#shopping-list");
@@ -74,24 +74,28 @@ async function handleRecipeSubmit(event) {
 
   const name = recipeNameInput.value.trim();
   const baseServings = Number(recipeServingsInput.value);
+  const tags = recipeTagInputs.filter((input) => input.checked).map((input) => input.value);
   const ingredients = recipeIngredientsInput.value
     .split("\n")
     .map((entry) => entry.trim())
     .filter(Boolean);
 
-  if (!name || ingredients.length === 0 || baseServings < 1) {
-    updateSyncStatus("Bitte Rezeptname, Personenanzahl und Zutaten angeben.");
+  if (!name || ingredients.length === 0 || baseServings < 1 || tags.length === 0) {
+    updateSyncStatus("Bitte Rezeptname, Personenanzahl, Meal-Labels und Zutaten angeben.");
     return;
   }
 
   try {
     const nextState = await apiFetch("/api/recipes", {
       method: "POST",
-      body: JSON.stringify({ name, baseServings, ingredients })
+      body: JSON.stringify({ name, baseServings, tags, ingredients })
     });
     replaceState(nextState);
     recipeForm.reset();
     recipeServingsInput.value = 2;
+    recipeTagInputs.forEach((input) => {
+      input.checked = input.value === "Mittag" || input.value === "Abendessen";
+    });
     updateSyncStatus("Rezept fuer alle gespeichert.");
     render();
   } catch {
@@ -146,27 +150,18 @@ function renderRecipeLibrary() {
     card.dataset.recipeId = recipe.id;
     card.querySelector("h3").textContent = recipe.name;
     card.querySelector(".recipe-servings").textContent = `Basis fuer ${recipe.baseServings} Personen`;
+    const tagsContainer = card.querySelector(".recipe-tags");
+    const recipeTags = Array.isArray(recipe.tags) && recipe.tags.length > 0 ? recipe.tags : MEALS;
+    recipeTags.forEach((tag) => {
+      const tagElement = document.createElement("span");
+      tagElement.className = "recipe-tag";
+      tagElement.textContent = tag;
+      tagsContainer.append(tagElement);
+    });
     card.querySelector(".ingredient-preview").textContent = recipe.ingredients.join(" • ");
-
-    card.addEventListener("dragstart", (event) => {
-      draggedRecipeId = recipe.id;
-      event.dataTransfer?.setData("text/plain", recipe.id);
-      event.dataTransfer?.setData("application/x-recipe-id", recipe.id);
-      if (event.dataTransfer) {
-        event.dataTransfer.effectAllowed = "move";
-      }
-      card.classList.add("dragging");
-    });
-
-    card.addEventListener("dragend", () => {
-      draggedRecipeId = null;
-      card.classList.remove("dragging");
-    });
-
     card.querySelector(".delete-recipe").addEventListener("click", () => {
       deleteRecipe(recipe.id);
     });
-
     recipeLibrary.append(card);
   });
 }
@@ -197,40 +192,39 @@ function createMealSlot(day, meal) {
   title.textContent = meal;
   const subtitle = document.createElement("span");
   subtitle.className = "day-subtitle";
-  subtitle.textContent = "Rezept hier ablegen";
+  subtitle.textContent = "Rezept auswaehlen";
   heading.append(title, subtitle);
 
-  const dropZone = document.createElement("div");
-  dropZone.className = "drop-zone";
-  dropZone.dataset.day = day;
-  dropZone.dataset.meal = meal;
+  const slotBody = document.createElement("div");
+  slotBody.className = "drop-zone";
 
-  dropZone.addEventListener("dragover", (event) => {
-    event.preventDefault();
-    dropZone.classList.add("drag-over");
+  const plannedEntry = state.weekPlan[day]?.[meal] || { recipeId: null, servings: null };
+  const plannedRecipe = state.recipes.find((recipe) => recipe.id === plannedEntry.recipeId);
+  const availableRecipes = state.recipes.filter((recipe) => {
+    const recipeTags = Array.isArray(recipe.tags) && recipe.tags.length > 0 ? recipe.tags : MEALS;
+    return recipeTags.includes(meal);
   });
 
-  dropZone.addEventListener("dragleave", () => {
-    dropZone.classList.remove("drag-over");
+  const select = document.createElement("select");
+  select.className = "meal-select";
+
+  const emptyOption = document.createElement("option");
+  emptyOption.value = "";
+  emptyOption.textContent = "Kein Rezept";
+  select.append(emptyOption);
+
+  availableRecipes.forEach((recipe) => {
+    const option = document.createElement("option");
+    option.value = recipe.id;
+    option.textContent = recipe.name;
+    select.append(option);
   });
 
-  dropZone.addEventListener("drop", async (event) => {
-    event.preventDefault();
-    dropZone.classList.remove("drag-over");
-
-    const droppedRecipeId =
-      event.dataTransfer?.getData("application/x-recipe-id") ||
-      event.dataTransfer?.getData("text/plain") ||
-      draggedRecipeId;
-
-    if (!droppedRecipeId) {
-      return;
-    }
-
-    const recipe = state.recipes.find((entry) => entry.id === droppedRecipeId);
-    if (!recipe) {
-      return;
-    }
+  select.value = plannedEntry.recipeId || "";
+  select.disabled = availableRecipes.length === 0;
+  select.addEventListener("change", async () => {
+    const nextRecipeId = select.value || null;
+    const nextRecipe = state.recipes.find((recipe) => recipe.id === nextRecipeId);
 
     try {
       const nextState = await apiFetch("/api/week-plan", {
@@ -238,28 +232,33 @@ function createMealSlot(day, meal) {
         body: JSON.stringify({
           day,
           meal,
-          recipeId: droppedRecipeId,
-          servings: recipe.baseServings
+          recipeId: nextRecipeId,
+          servings: nextRecipe ? nextRecipe.baseServings : null
         })
       });
       replaceState(nextState);
-      updateSyncStatus(`${day} ${meal} gespeichert.`);
+      updateSyncStatus(nextRecipeId ? `${day} ${meal} gespeichert.` : `${day} ${meal} geleert.`);
       render();
     } catch {
       updateSyncStatus(`${day} ${meal} konnte nicht gespeichert werden.`);
     }
   });
 
-  const plannedEntry = state.weekPlan[day]?.[meal] || { recipeId: null, servings: null };
-  const plannedRecipe = state.recipes.find((recipe) => recipe.id === plannedEntry.recipeId);
+  slotBody.append(select);
 
   if (!plannedRecipe) {
-    dropZone.append(createEmptyState("Noch kein Rezept eingeplant."));
+    slotBody.append(
+      createEmptyState(
+        availableRecipes.length === 0
+          ? "Kein Rezept mit passendem Label vorhanden."
+          : "Noch kein Rezept eingeplant."
+      )
+    );
   } else {
-    dropZone.append(createPlannedRecipeCard(day, meal, plannedRecipe, plannedEntry.servings));
+    slotBody.append(createPlannedRecipeCard(day, meal, plannedRecipe, plannedEntry.servings));
   }
 
-  mealSlot.append(heading, dropZone);
+  mealSlot.append(heading, slotBody);
   return mealSlot;
 }
 
@@ -269,14 +268,12 @@ function createPlannedRecipeCard(day, meal, recipe, servings) {
 
   const content = document.createElement("div");
   const title = document.createElement("h4");
+  title.className = "planned-recipe-title";
   title.textContent = recipe.name;
   const meta = document.createElement("p");
   meta.className = "ingredient-preview";
   meta.textContent = `${servings} Personen • Basis ${recipe.baseServings}`;
-  const ingredients = document.createElement("p");
-  ingredients.className = "ingredient-preview";
-  ingredients.textContent = recipe.ingredients.join(" • ");
-  content.append(title, meta, ingredients);
+  content.append(title, meta);
 
   const actions = document.createElement("div");
   actions.className = "planned-actions";
@@ -412,7 +409,12 @@ function createEmptyState(text) {
 
 function replaceState(nextState) {
   state = {
-    recipes: Array.isArray(nextState.recipes) ? nextState.recipes : [],
+    recipes: Array.isArray(nextState.recipes)
+      ? nextState.recipes.map((recipe) => ({
+          ...recipe,
+          tags: Array.isArray(recipe.tags) && recipe.tags.length > 0 ? recipe.tags : [...MEALS]
+        }))
+      : [],
     weekPlan: createEmptyWeekPlan(),
     shoppingList: Array.isArray(nextState.shoppingList) ? nextState.shoppingList : []
   };

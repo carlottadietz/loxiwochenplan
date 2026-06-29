@@ -9,6 +9,7 @@ Eine kleine Web-App fuer gemeinsame Essensplanung mit Rezepten, Drag-and-Drop-Wo
 - Zwei Personen sehen denselben Plan
 - Das Frontend synchronisiert den Stand regelmaessig neu
 - Rezepte haben eine Basis-Personenzahl
+- Rezepte haben mehrere Meal-Labels fuer Fruehstueck, Mittag und Abendessen
 - Jeder Tag ist in Fruehstueck, Mittag und Abendessen aufgeteilt
 - Die Personenzahl pro eingeplantem Rezept kann im Wochenplan angepasst werden
 - Die Einkaufsliste ist direkt auf der Website abhakbar
@@ -19,7 +20,7 @@ Eine kleine Web-App fuer gemeinsame Essensplanung mit Rezepten, Drag-and-Drop-Wo
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-python app.py
+gunicorn --bind 127.0.0.1:10000 app:app
 ```
 
 Danach im Browser `http://localhost:10000` oeffnen.
@@ -30,9 +31,13 @@ Fuer gemeinsame Nutzung brauchst du in Render jetzt einen `Web Service`, keine `
 
 - Runtime: `Python`
 - Build Command: `pip install -r requirements.txt`
-- Start Command: `python app.py`
+- Start Command: `gunicorn --bind 0.0.0.0:$PORT app:app`
 - Health Check Path: `/api/health`
 - Plan: mindestens ein bezahlter Plan, wenn du die Daten ueber Restarts und Deploys behalten willst
+
+## Warum die Warning kam
+
+`python app.py` startet den eingebauten Flask-Entwicklungsserver. Der ist fuer lokales Entwickeln gedacht, aber nicht fuer produktive Deployments. In Produktion sollte ein WSGI-Server wie `gunicorn` davor laufen. Genau das ist jetzt in [render.yaml](render.yaml) hinterlegt.
 
 ## Wichtiger Punkt fuer dauerhafte Daten
 
@@ -54,8 +59,9 @@ Die passende Konfiguration ist bereits in [render.yaml](render.yaml) hinterlegt.
 
 - Rezepte mit Zutaten anlegen
 - Basis-Personenzahl pro Rezept speichern
+- Mehrere Meal-Labels pro Rezept speichern
 - Rezepte fuer alle speichern und loeschen
-- Rezepte per Drag-and-Drop auf Fruehstueck, Mittag oder Abendessen ziehen
+- Rezepte pro Mahlzeit aus einer Auswahl auswaehlen
 - Personenzahl pro eingeplantem Rezept direkt im Wochenplan aendern
 - Einkaufsliste aus allen eingeplanten Rezepten erzeugen
 - Einkaufsliste direkt im Browser abhaken

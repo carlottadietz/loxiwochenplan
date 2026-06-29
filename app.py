@@ -28,12 +28,14 @@ DEFAULT_RECIPES = [
         "id": str(uuid.uuid4()),
         "name": "One-Pot Pasta",
         "base_servings": 2,
+        "tags": ["Mittag", "Abendessen"],
         "ingredients": ["500 g Pasta", "250 g Cherrytomaten", "1 Zwiebel", "2 Knoblauchzehen"],
     },
     {
         "id": str(uuid.uuid4()),
         "name": "Ofengemuese mit Feta",
         "base_servings": 4,
+        "tags": ["Mittag", "Abendessen"],
         "ingredients": ["3 Karotten", "2 Paprika", "1 Zucchini", "200 g Feta"],
     },
 ]
@@ -161,10 +163,11 @@ def serialize_state():
                 "id": row["id"],
                 "name": row["name"],
                 "baseServings": row["base_servings"],
+                "tags": json.loads(row["tags"]),
                 "ingredients": json.loads(row["ingredients"]),
             }
             for row in connection.execute(
-                "SELECT id, name, base_servings, ingredients FROM recipes ORDER BY created_at DESC, name ASC"
+                "SELECT id, name, base_servings, tags, ingredients FROM recipes ORDER BY created_at DESC, name ASC"
             )
         ]
         week_plan = {
@@ -200,6 +203,7 @@ def ensure_database():
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
                 base_servings INTEGER NOT NULL DEFAULT 2,
+                tags TEXT NOT NULL DEFAULT '[]',
                 ingredients TEXT NOT NULL,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
@@ -212,6 +216,14 @@ def ensure_database():
         if "base_servings" not in recipe_columns:
             connection.execute(
                 "ALTER TABLE recipes ADD COLUMN base_servings INTEGER NOT NULL DEFAULT 2"
+            )
+        if "tags" not in recipe_columns:
+            connection.execute(
+                "ALTER TABLE recipes ADD COLUMN tags TEXT NOT NULL DEFAULT '[]'"
+            )
+            connection.execute(
+                "UPDATE recipes SET tags = ? WHERE tags IS NULL OR tags = '[]' OR tags = ''",
+                (json.dumps(MEALS),),
             )
 
         legacy_week_plan_rows = []
@@ -262,12 +274,13 @@ def ensure_database():
         recipe_count = connection.execute("SELECT COUNT(*) AS count FROM recipes").fetchone()["count"]
         if recipe_count == 0:
             connection.executemany(
-                "INSERT INTO recipes (id, name, base_servings, ingredients) VALUES (?, ?, ?, ?)",
+                "INSERT INTO recipes (id, name, base_servings, tags, ingredients) VALUES (?, ?, ?, ?, ?)",
                 [
                     (
                         recipe["id"],
                         recipe["name"],
                         recipe["base_servings"],
+                        json.dumps(recipe["tags"]),
                         json.dumps(recipe["ingredients"]),
                     )
                     for recipe in DEFAULT_RECIPES
@@ -307,9 +320,10 @@ def create_recipe():
     payload = request.get_json(silent=True) or {}
     name = str(payload.get("name", "")).strip()
     base_servings = payload.get("baseServings")
+    tags = payload.get("tags", [])
     ingredients = payload.get("ingredients", [])
 
-    if not name or not isinstance(ingredients, list):
+    if not name or not isinstance(ingredients, list) or not isinstance(tags, list):
         return jsonify({"error": "Ungueltige Rezeptdaten."}), 400
 
     try:
@@ -324,10 +338,25 @@ def create_recipe():
     if not cleaned_ingredients:
         return jsonify({"error": "Mindestens eine Zutat ist erforderlich."}), 400
 
+    cleaned_tags = []
+    for tag in tags:
+        normalized_tag = str(tag).strip()
+        if normalized_tag in MEALS and normalized_tag not in cleaned_tags:
+            cleaned_tags.append(normalized_tag)
+
+    if not cleaned_tags:
+        return jsonify({"error": "Bitte mindestens ein Meal-Label waehlen."}), 400
+
     with get_connection() as connection:
         connection.execute(
-            "INSERT INTO recipes (id, name, base_servings, ingredients) VALUES (?, ?, ?, ?)",
-            (str(uuid.uuid4()), name, base_servings, json.dumps(cleaned_ingredients)),
+            "INSERT INTO recipes (id, name, base_servings, tags, ingredients) VALUES (?, ?, ?, ?, ?)",
+            (
+                str(uuid.uuid4()),
+                name,
+                base_servings,
+                json.dumps(cleaned_tags),
+                json.dumps(cleaned_ingredients),
+            ),
         )
 
     return jsonify(serialize_state())

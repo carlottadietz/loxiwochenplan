@@ -12,12 +12,12 @@
 <body>
   <div class="page-shell">
     <header class="hero">
-      <div>
+      <div class="hero-content">
         <p class="eyebrow">Wochenplanung fuer dein Essen</p>
-        <h1>Rezepte ziehen, Woche fuellen, Einkaufsliste erzeugen.</h1>
+        <h1>Rezepte waehlen, Woche fuellen, Einkaufsliste erzeugen.</h1>
         <p class="hero-copy">
-          Lege eigene Rezepte mit Zutaten an, ziehe sie per Drag-and-Drop auf einen Wochentag
-          und sammle daraus automatisch deine Einkaufsliste.
+          Lege eigene Rezepte mit Zutaten und passenden Meal-Labels an, waehle sie fuer
+          Fruehstueck, Mittag oder Abendessen aus und sammle daraus automatisch deine Einkaufsliste.
         </p>
         <p id="sync-status" class="sync-status">Verbinde mit gemeinsamem Plan...</p>
       </div>
@@ -28,7 +28,18 @@
     </header>
 
     <main class="layout">
-      <section class="panel panel-accent">
+      <section class="panel panel-week">
+        <div class="panel-header">
+          <div>
+            <p class="section-kicker">Planung</p>
+            <h2>Deine Woche</h2>
+          </div>
+          <p class="drop-hint">Rezept pro Mahlzeit auswaehlen und Personenzahl anpassen.</p>
+        </div>
+        <div id="week-board" class="week-board"></div>
+      </section>
+
+      <section class="panel panel-accent panel-recipes">
         <div class="panel-header">
           <div>
             <p class="section-kicker">Rezepte</p>
@@ -43,9 +54,25 @@
           </label>
 
           <label>
-            Basis fuer Personen
+            Personenanzahl
             <input id="recipe-servings" name="baseServings" type="number" min="1" value="2" required>
           </label>
+
+          <fieldset class="recipe-tags-fieldset">
+            <legend>Passend fuer</legend>
+            <label class="tag-option">
+              <input type="checkbox" name="recipe-tags" value="Fruehstueck">
+              <span>Fruehstueck</span>
+            </label>
+            <label class="tag-option">
+              <input type="checkbox" name="recipe-tags" value="Mittag" checked>
+              <span>Mittag</span>
+            </label>
+            <label class="tag-option">
+              <input type="checkbox" name="recipe-tags" value="Abendessen" checked>
+              <span>Abendessen</span>
+            </label>
+          </fieldset>
 
           <label>
             Zutaten
@@ -64,24 +91,13 @@
         <div class="panel-header recipes-header">
           <div>
             <p class="section-kicker">Bibliothek</p>
-            <h2>Per Drag-and-Drop verplanen</h2>
+            <h2>Rezepte fuer die Auswahl</h2>
           </div>
         </div>
         <div id="recipe-library" class="recipe-library" aria-live="polite"></div>
       </section>
 
-      <section class="panel">
-        <div class="panel-header">
-          <div>
-            <p class="section-kicker">Planung</p>
-            <h2>Deine Woche</h2>
-          </div>
-          <p class="drop-hint">Rezepte auf einen Tag ziehen oder mit Klick entfernen.</p>
-        </div>
-        <div id="week-board" class="week-board"></div>
-      </section>
-
-      <section class="panel shopping-panel">
+      <section class="panel shopping-panel panel-shopping">
         <div class="panel-header">
           <div>
             <p class="section-kicker">Einkauf</p>
@@ -95,10 +111,11 @@
   </div>
 
   <template id="recipe-card-template">
-    <article class="recipe-card" draggable="true">
+    <article class="recipe-card">
       <div>
         <h3></h3>
         <p class="recipe-servings"></p>
+        <div class="recipe-tags"></div>
         <p class="ingredient-preview"></p>
       </div>
       <button class="ghost-button delete-recipe" type="button">Loeschen</button>
