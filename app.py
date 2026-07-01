@@ -20,6 +20,29 @@ DAYS = [
     "Sonntag",
 ]
 MEALS = ["Fruehstueck", "Mittag", "Abendessen"]
+WEEKLY_OPTION_GROUPS = {
+    "snacks": [
+        "Nuesse Mix",
+        "Proteinriegel",
+        "Obst to go",
+        "Cracker",
+        "Dunkle Schokolade",
+    ],
+    "household": [
+        "Allzweckreiniger",
+        "Spuelmittel",
+        "Kuechenrolle",
+        "Muellbeutel",
+        "Waschmittel",
+    ],
+    "pantry": [
+        "Reis",
+        "Pasta",
+        "Tomaten in Dosen",
+        "Haferflocken",
+        "Olivenoel",
+    ],
+}
 INGREDIENT_PATTERN = re.compile(
     r"^\s*(?P<amount>\d+(?:[.,]\d+)?)\s*(?P<unit>[A-Za-z]+)?\s+(?P<name>.+?)\s*$"
 )
@@ -184,12 +207,65 @@ def serialize_state():
                 }
 
         shopping_list = build_shopping_list(connection, recipes)
+        weekly_options = {
+            category: [
+                {
+                    "id": row["item_key"],
+                    "label": row["label"],
+                    "selected": bool(row["selected"]),
+                }
+                for row in connection.execute(
+                    "SELECT item_key, label, selected FROM weekly_options WHERE category = ? ORDER BY label ASC",
+                    (category,),
+                )
+            ]
+            for category in WEEKLY_OPTION_GROUPS
+        }
 
     return {
         "recipes": recipes,
         "weekPlan": week_plan,
         "shoppingList": shopping_list,
+        "weeklyOptions": weekly_options,
     }
+
+
+def parse_recipe_payload(payload):
+    name = str(payload.get("name", "")).strip()
+    base_servings = payload.get("baseServings")
+    tags = payload.get("tags", [])
+    ingredients = payload.get("ingredients", [])
+
+    if not name or not isinstance(ingredients, list) or not isinstance(tags, list):
+        return None, "Ungueltige Rezeptdaten."
+
+    try:
+        base_servings = int(base_servings)
+    except (TypeError, ValueError):
+        return None, "Bitte eine gueltige Personenzahl angeben."
+
+    if base_servings < 1:
+        return None, "Die Personenzahl muss mindestens 1 sein."
+
+    cleaned_ingredients = [str(item).strip() for item in ingredients if str(item).strip()]
+    if not cleaned_ingredients:
+        return None, "Mindestens eine Zutat ist erforderlich."
+
+    cleaned_tags = []
+    for tag in tags:
+        normalized_tag = str(tag).strip()
+        if normalized_tag in MEALS and normalized_tag not in cleaned_tags:
+            cleaned_tags.append(normalized_tag)
+
+    if not cleaned_tags:
+        return None, "Bitte mindestens ein Meal-Label waehlen."
+
+    return {
+        "name": name,
+        "base_servings": base_servings,
+        "tags": cleaned_tags,
+        "ingredients": cleaned_ingredients,
+    }, None
 
 
 def ensure_database():
@@ -258,6 +334,17 @@ def ensure_database():
             )
             """
         )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS weekly_options (
+                category TEXT NOT NULL,
+                item_key TEXT NOT NULL,
+                label TEXT NOT NULL,
+                selected INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (category, item_key)
+            )
+            """
+        )
 
         existing_slots = {
             (row["day"], row["meal"])
@@ -304,6 +391,18 @@ def ensure_database():
                     ),
                 )
 
+        for category, labels in WEEKLY_OPTION_GROUPS.items():
+            for label in labels:
+                item_key = normalize_key(label)
+                connection.execute(
+                    """
+                    INSERT INTO weekly_options (category, item_key, label, selected)
+                    VALUES (?, ?, ?, 0)
+                    ON CONFLICT(category, item_key) DO NOTHING
+                    """,
+                    (category, item_key, label),
+                )
+
 
 @app.get("/api/health")
 def health_check():
@@ -318,44 +417,48 @@ def get_state():
 @app.post("/api/recipes")
 def create_recipe():
     payload = request.get_json(silent=True) or {}
-    name = str(payload.get("name", "")).strip()
-    base_servings = payload.get("baseServings")
-    tags = payload.get("tags", [])
-    ingredients = payload.get("ingredients", [])
-
-    if not name or not isinstance(ingredients, list) or not isinstance(tags, list):
-        return jsonify({"error": "Ungueltige Rezeptdaten."}), 400
-
-    try:
-        base_servings = int(base_servings)
-    except (TypeError, ValueError):
-        return jsonify({"error": "Bitte eine gueltige Personenzahl angeben."}), 400
-
-    if base_servings < 1:
-        return jsonify({"error": "Die Personenzahl muss mindestens 1 sein."}), 400
-
-    cleaned_ingredients = [str(item).strip() for item in ingredients if str(item).strip()]
-    if not cleaned_ingredients:
-        return jsonify({"error": "Mindestens eine Zutat ist erforderlich."}), 400
-
-    cleaned_tags = []
-    for tag in tags:
-        normalized_tag = str(tag).strip()
-        if normalized_tag in MEALS and normalized_tag not in cleaned_tags:
-            cleaned_tags.append(normalized_tag)
-
-    if not cleaned_tags:
-        return jsonify({"error": "Bitte mindestens ein Meal-Label waehlen."}), 400
+    recipe_data, error = parse_recipe_payload(payload)
+    if error:
+        return jsonify({"error": error}), 400
 
     with get_connection() as connection:
         connection.execute(
             "INSERT INTO recipes (id, name, base_servings, tags, ingredients) VALUES (?, ?, ?, ?, ?)",
             (
                 str(uuid.uuid4()),
-                name,
-                base_servings,
-                json.dumps(cleaned_tags),
-                json.dumps(cleaned_ingredients),
+                recipe_data["name"],
+                recipe_data["base_servings"],
+                json.dumps(recipe_data["tags"]),
+                json.dumps(recipe_data["ingredients"]),
+            ),
+        )
+
+    return jsonify(serialize_state())
+
+
+@app.put("/api/recipes/<recipe_id>")
+def update_recipe(recipe_id):
+    payload = request.get_json(silent=True) or {}
+    recipe_data, error = parse_recipe_payload(payload)
+    if error:
+        return jsonify({"error": error}), 400
+
+    with get_connection() as connection:
+        existing_recipe = connection.execute(
+            "SELECT id FROM recipes WHERE id = ?",
+            (recipe_id,),
+        ).fetchone()
+        if existing_recipe is None:
+            return jsonify({"error": "Rezept nicht gefunden."}), 404
+
+        connection.execute(
+            "UPDATE recipes SET name = ?, base_servings = ?, tags = ?, ingredients = ? WHERE id = ?",
+            (
+                recipe_data["name"],
+                recipe_data["base_servings"],
+                json.dumps(recipe_data["tags"]),
+                json.dumps(recipe_data["ingredients"]),
+                recipe_id,
             ),
         )
 
@@ -436,6 +539,59 @@ def update_shopping_item():
             ON CONFLICT(item_key) DO UPDATE SET checked = excluded.checked
             """,
             (item_id, int(checked)),
+        )
+
+    return jsonify(serialize_state())
+
+
+@app.put("/api/weekly-options")
+def update_weekly_option():
+    payload = request.get_json(silent=True) or {}
+    category = str(payload.get("category", "")).strip()
+    item_id = str(payload.get("itemId", "")).strip()
+    selected = bool(payload.get("selected", False))
+
+    if category not in WEEKLY_OPTION_GROUPS or not item_id:
+        return jsonify({"error": "Ungueltige Wochenauswahl."}), 400
+
+    with get_connection() as connection:
+        row = connection.execute(
+            "SELECT item_key FROM weekly_options WHERE category = ? AND item_key = ?",
+            (category, item_id),
+        ).fetchone()
+        if row is None:
+            return jsonify({"error": "Auswahl nicht gefunden."}), 404
+
+        connection.execute(
+            "UPDATE weekly_options SET selected = ? WHERE category = ? AND item_key = ?",
+            (int(selected), category, item_id),
+        )
+
+    return jsonify(serialize_state())
+
+
+@app.post("/api/weekly-options")
+def create_weekly_option():
+    payload = request.get_json(silent=True) or {}
+    category = str(payload.get("category", "")).strip()
+    label = str(payload.get("label", "")).strip()
+
+    if category not in WEEKLY_OPTION_GROUPS or not label:
+        return jsonify({"error": "Ungueltige Wochenauswahl."}), 400
+
+    item_key = normalize_key(label)
+    if not item_key:
+        return jsonify({"error": "Ungueltige Wochenauswahl."}), 400
+
+    with get_connection() as connection:
+        connection.execute(
+            """
+            INSERT INTO weekly_options (category, item_key, label, selected)
+            VALUES (?, ?, ?, 1)
+            ON CONFLICT(category, item_key)
+            DO UPDATE SET label = excluded.label, selected = 1
+            """,
+            (category, item_key, label),
         )
 
     return jsonify(serialize_state())

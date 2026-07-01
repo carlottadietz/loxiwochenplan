@@ -1,6 +1,35 @@
 const DAYS = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
 const MEALS = ["Fruehstueck", "Mittag", "Abendessen"];
 const POLLING_INTERVAL_MS = 15000;
+const ALL_DAYS_KEY = "__all_days__";
+const WEEKLY_CATEGORIES = [
+  {
+    key: "snacks",
+    containerId: "#snack-options",
+    inputId: "#snack-input",
+    suggestionsId: "#snack-suggestions",
+    label: "Snacks"
+  },
+  {
+    key: "household",
+    containerId: "#household-options",
+    inputId: "#household-input",
+    suggestionsId: "#household-suggestions",
+    label: "Putzmittel"
+  },
+  {
+    key: "pantry",
+    containerId: "#pantry-options",
+    inputId: "#pantry-input",
+    suggestionsId: "#pantry-suggestions",
+    label: "Vorrat"
+  }
+];
+
+function getCurrentDayLabel() {
+  const dayIndex = (new Date().getDay() + 6) % 7;
+  return DAYS[dayIndex] || DAYS[0];
+}
 
 function createEmptyWeekPlan() {
   return Object.fromEntries(
@@ -14,16 +43,30 @@ function createEmptyWeekPlan() {
 let state = {
   recipes: [],
   weekPlan: createEmptyWeekPlan(),
-  shoppingList: []
+  shoppingList: [],
+  weeklyOptions: {
+    snacks: [],
+    household: [],
+    pantry: []
+  }
 };
+let selectedDay = getCurrentDayLabel();
+let editingRecipeId = null;
+let selectedRecipeTags = new Set(["Mittag", "Abendessen"]);
 
 const recipeForm = document.querySelector("#recipe-form");
 const recipeNameInput = document.querySelector("#recipe-name");
 const recipeServingsInput = document.querySelector("#recipe-servings");
-const recipeIngredientsInput = document.querySelector("#recipe-ingredients");
-const recipeTagInputs = Array.from(document.querySelectorAll('input[name="recipe-tags"]'));
+const recipeTagButtons = Array.from(document.querySelectorAll(".tag-toggle"));
+const ingredientList = document.querySelector("#ingredient-list");
+const addIngredientButton = document.querySelector("#add-ingredient-button");
 const navTabs = Array.from(document.querySelectorAll(".nav-tab"));
 const pageViews = Array.from(document.querySelectorAll(".page-view"));
+const daySelector = document.querySelector("#day-selector");
+const dayFlowStatus = document.querySelector("#day-flow-status");
+const prevDayButton = document.querySelector("#prev-day");
+const nextDayButton = document.querySelector("#next-day");
+const weeklyAddForms = Array.from(document.querySelectorAll(".extra-add-form"));
 const recipeLibrary = document.querySelector("#recipe-library");
 const weekBoard = document.querySelector("#week-board");
 const shoppingList = document.querySelector("#shopping-list");
@@ -35,6 +78,8 @@ const recipeModal = document.querySelector("#recipe-modal");
 const openRecipeModalButton = document.querySelector("#open-recipe-modal");
 const openRecipeModalSecondaryButton = document.querySelector("#open-recipe-modal-secondary");
 const closeRecipeModalButton = document.querySelector("#close-recipe-modal");
+const recipeModalTitle = document.querySelector("#recipe-modal-title");
+const recipeSubmitButton = document.querySelector("#recipe-submit-button");
 const recipeCardTemplate = document.querySelector("#recipe-card-template");
 const dayCardTemplate = document.querySelector("#day-card-template");
 
@@ -42,9 +87,48 @@ recipeForm.addEventListener("submit", handleRecipeSubmit);
 resetWeekButton.addEventListener("click", resetWeek);
 copyShoppingListButton.addEventListener("click", copyShoppingList);
 refreshDataButton.addEventListener("click", () => syncState({ announce: true }));
+addIngredientButton.addEventListener("click", () => {
+  ingredientList.append(createIngredientRow());
+});
 openRecipeModalButton.addEventListener("click", openRecipeModal);
 openRecipeModalSecondaryButton.addEventListener("click", openRecipeModal);
 closeRecipeModalButton.addEventListener("click", closeRecipeModal);
+prevDayButton.addEventListener("click", () => stepSelectedDay(-1));
+nextDayButton.addEventListener("click", () => stepSelectedDay(1));
+weeklyAddForms.forEach((form) => {
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const category = form.dataset.category;
+    const input = form.querySelector("input");
+    if (!category || !(input instanceof HTMLInputElement)) {
+      return;
+    }
+    createWeeklyOption(category, input.value.trim(), input);
+  });
+});
+daySelector.addEventListener("click", (event) => {
+  const button = event.target instanceof HTMLElement ? event.target.closest("button[data-day]") : null;
+  if (!button) {
+    return;
+  }
+  selectedDay = button.dataset.day || ALL_DAYS_KEY;
+  renderPlannerNavigation();
+  renderWeekBoard();
+});
+recipeTagButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    const tag = button.dataset.tag;
+    if (!tag) {
+      return;
+    }
+    if (selectedRecipeTags.has(tag)) {
+      selectedRecipeTags.delete(tag);
+    } else {
+      selectedRecipeTags.add(tag);
+    }
+    renderRecipeTagButtons();
+  });
+});
 recipeModal.addEventListener("click", (event) => {
   if (event.target instanceof HTMLElement && event.target.dataset.closeModal === "true") {
     closeRecipeModal();
@@ -98,11 +182,8 @@ async function handleRecipeSubmit(event) {
 
   const name = recipeNameInput.value.trim();
   const baseServings = Number(recipeServingsInput.value);
-  const tags = recipeTagInputs.filter((input) => input.checked).map((input) => input.value);
-  const ingredients = recipeIngredientsInput.value
-    .split("\n")
-    .map((entry) => entry.trim())
-    .filter(Boolean);
+  const tags = Array.from(selectedRecipeTags);
+  const ingredients = collectIngredients();
 
   if (!name || ingredients.length === 0 || baseServings < 1 || tags.length === 0) {
     updateSyncStatus("Bitte Rezeptname, Personenanzahl, Meal-Labels und Zutaten angeben.");
@@ -110,19 +191,16 @@ async function handleRecipeSubmit(event) {
   }
 
   try {
-    const nextState = await apiFetch("/api/recipes", {
-      method: "POST",
+    const isEdit = Boolean(editingRecipeId);
+    const nextState = await apiFetch(isEdit ? `/api/recipes/${editingRecipeId}` : "/api/recipes", {
+      method: isEdit ? "PUT" : "POST",
       body: JSON.stringify({ name, baseServings, tags, ingredients })
     });
     replaceState(nextState);
-    recipeForm.reset();
-    recipeServingsInput.value = 2;
-    recipeTagInputs.forEach((input) => {
-      input.checked = input.value === "Mittag" || input.value === "Abendessen";
-    });
+    resetRecipeForm();
     closeRecipeModal();
     setActivePage("library");
-    updateSyncStatus("Rezept fuer alle gespeichert.");
+    updateSyncStatus(isEdit ? "Rezept wurde aktualisiert." : "Rezept fuer alle gespeichert.");
     render();
   } catch {
     updateSyncStatus("Rezept konnte nicht gespeichert werden.");
@@ -158,9 +236,79 @@ async function copyShoppingList() {
 }
 
 function render() {
+  renderPlannerNavigation();
   renderRecipeLibrary();
   renderWeekBoard();
+  renderWeeklyOptions();
   renderShoppingList();
+}
+
+function renderPlannerNavigation() {
+  renderDaySelector();
+  updateDayFlowStatus();
+}
+
+function renderDaySelector() {
+  daySelector.replaceChildren();
+  const today = getCurrentDayLabel();
+  const options = [{ key: ALL_DAYS_KEY, label: "Alle Tage" }];
+  DAYS.forEach((day) => {
+    options.push({ key: day, label: day });
+  });
+
+  options.forEach((option) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "day-chip";
+    button.dataset.day = option.key;
+    button.textContent = option.label;
+    button.classList.toggle("is-active", selectedDay === option.key);
+    if (option.key === today) {
+      button.classList.add("is-today");
+    }
+    daySelector.append(button);
+  });
+}
+
+function updateDayFlowStatus() {
+  if (selectedDay === ALL_DAYS_KEY) {
+    dayFlowStatus.textContent = "Alle Tage im Ueberblick";
+    prevDayButton.disabled = false;
+    nextDayButton.disabled = false;
+    return;
+  }
+
+  const dayIndex = DAYS.indexOf(selectedDay);
+  const position = dayIndex >= 0 ? dayIndex + 1 : 1;
+  dayFlowStatus.textContent = `Tag ${position} von ${DAYS.length}`;
+  prevDayButton.disabled = dayIndex <= 0;
+  nextDayButton.disabled = dayIndex === DAYS.length - 1;
+}
+
+function stepSelectedDay(direction) {
+  if (selectedDay === ALL_DAYS_KEY) {
+    selectedDay = getCurrentDayLabel();
+    renderPlannerNavigation();
+    renderWeekBoard();
+    return;
+  }
+
+  const dayIndex = DAYS.indexOf(selectedDay);
+  if (dayIndex < 0) {
+    selectedDay = DAYS[0];
+    renderPlannerNavigation();
+    renderWeekBoard();
+    return;
+  }
+
+  const nextIndex = dayIndex + direction;
+  if (nextIndex < 0 || nextIndex >= DAYS.length) {
+    return;
+  }
+
+  selectedDay = DAYS[nextIndex];
+  renderPlannerNavigation();
+  renderWeekBoard();
 }
 
 function renderRecipeLibrary() {
@@ -185,6 +333,9 @@ function renderRecipeLibrary() {
       tagsContainer.append(tagElement);
     });
     card.querySelector(".ingredient-preview").textContent = recipe.ingredients.join(" • ");
+    card.querySelector(".edit-recipe").addEventListener("click", () => {
+      openRecipeModal({ recipe });
+    });
     card.querySelector(".delete-recipe").addEventListener("click", () => {
       deleteRecipe(recipe.id);
     });
@@ -194,11 +345,19 @@ function renderRecipeLibrary() {
 
 function renderWeekBoard() {
   weekBoard.replaceChildren();
+  weekBoard.classList.toggle("single-day-mode", selectedDay !== ALL_DAYS_KEY);
 
-  DAYS.forEach((day) => {
+  const daysToRender = selectedDay === ALL_DAYS_KEY ? DAYS : [selectedDay];
+  const today = getCurrentDayLabel();
+
+  daysToRender.forEach((day) => {
     const dayCard = dayCardTemplate.content.firstElementChild.cloneNode(true);
     dayCard.querySelector("h3").textContent = day;
-    dayCard.querySelector(".day-card-subtitle").textContent = `${MEALS.length} Mahlzeiten im Blick`;
+    dayCard.querySelector(".day-card-subtitle").textContent = selectedDay === ALL_DAYS_KEY
+      ? `${MEALS.length} Mahlzeiten im Blick`
+      : day === today
+        ? "Heute im Fokus"
+        : "Tag im Fokus";
     const mealsContainer = dayCard.querySelector(".meal-slots");
 
     MEALS.forEach((meal) => {
@@ -227,10 +386,17 @@ function createMealSlot(day, meal) {
 
   const plannedEntry = state.weekPlan[day]?.[meal] || { recipeId: null, servings: null };
   const plannedRecipe = state.recipes.find((recipe) => recipe.id === plannedEntry.recipeId);
-  const availableRecipes = state.recipes.filter((recipe) => {
+  const availableRecipeMap = new Map();
+  state.recipes.forEach((recipe) => {
     const recipeTags = Array.isArray(recipe.tags) && recipe.tags.length > 0 ? recipe.tags : MEALS;
-    return recipeTags.includes(meal);
+    if (recipeTags.includes(meal)) {
+      availableRecipeMap.set(recipe.id, recipe);
+    }
   });
+  if (plannedRecipe) {
+    availableRecipeMap.set(plannedRecipe.id, plannedRecipe);
+  }
+  const availableRecipes = Array.from(availableRecipeMap.values());
 
   const select = document.createElement("select");
   select.className = "meal-select";
@@ -248,7 +414,7 @@ function createMealSlot(day, meal) {
   });
 
   select.value = plannedEntry.recipeId || "";
-  select.disabled = availableRecipes.length === 0;
+  select.disabled = availableRecipes.length === 0 && !plannedRecipe;
   select.addEventListener("change", async () => {
     const nextRecipeId = select.value || null;
     const nextRecipe = state.recipes.find((recipe) => recipe.id === nextRecipeId);
@@ -416,6 +582,90 @@ function renderShoppingList() {
   });
 }
 
+function renderWeeklyOptions() {
+  WEEKLY_CATEGORIES.forEach((category) => {
+    const container = document.querySelector(category.containerId);
+    const suggestions = document.querySelector(category.suggestionsId);
+    if (!container) {
+      return;
+    }
+
+    container.replaceChildren();
+    const options = Array.isArray(state.weeklyOptions?.[category.key])
+      ? state.weeklyOptions[category.key]
+      : [];
+
+    if (options.length === 0) {
+      container.append(createEmptyState("Keine Optionen gefunden."));
+      if (suggestions instanceof HTMLElement) {
+        suggestions.replaceChildren();
+      }
+      return;
+    }
+
+    if (suggestions instanceof HTMLElement) {
+      suggestions.replaceChildren();
+      options.forEach((option) => {
+        const suggestionOption = document.createElement("option");
+        suggestionOption.value = option.label;
+        suggestions.append(suggestionOption);
+      });
+    }
+
+    options.forEach((option) => {
+      const itemLabel = document.createElement("label");
+      itemLabel.className = "extra-option-item";
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = Boolean(option.selected);
+      checkbox.addEventListener("change", () => {
+        toggleWeeklyOption(category.key, option.id, checkbox.checked);
+      });
+
+      const text = document.createElement("span");
+      text.textContent = option.label;
+
+      itemLabel.append(checkbox, text);
+      container.append(itemLabel);
+    });
+  });
+}
+
+async function toggleWeeklyOption(category, itemId, selected) {
+  try {
+    const nextState = await apiFetch("/api/weekly-options", {
+      method: "PUT",
+      body: JSON.stringify({ category, itemId, selected })
+    });
+    replaceState(nextState);
+    renderWeeklyOptions();
+  } catch {
+    updateSyncStatus("Wochenzusatz konnte nicht gespeichert werden.");
+  }
+}
+
+async function createWeeklyOption(category, label, inputElement) {
+  if (!label) {
+    return;
+  }
+
+  try {
+    const nextState = await apiFetch("/api/weekly-options", {
+      method: "POST",
+      body: JSON.stringify({ category, label })
+    });
+    replaceState(nextState);
+    renderWeeklyOptions();
+    if (inputElement instanceof HTMLInputElement) {
+      inputElement.value = "";
+    }
+    updateSyncStatus(`${label} wurde gespeichert und ausgewaehlt.`);
+  } catch {
+    updateSyncStatus("Neuer Wochenzusatz konnte nicht gespeichert werden.");
+  }
+}
+
 async function deleteRecipe(recipeId) {
   try {
     const nextState = await apiFetch(`/api/recipes/${recipeId}`, { method: "DELETE" });
@@ -443,7 +693,12 @@ function replaceState(nextState) {
         }))
       : [],
     weekPlan: createEmptyWeekPlan(),
-    shoppingList: Array.isArray(nextState.shoppingList) ? nextState.shoppingList : []
+    shoppingList: Array.isArray(nextState.shoppingList) ? nextState.shoppingList : [],
+    weeklyOptions: {
+      snacks: Array.isArray(nextState.weeklyOptions?.snacks) ? nextState.weeklyOptions.snacks : [],
+      household: Array.isArray(nextState.weeklyOptions?.household) ? nextState.weeklyOptions.household : [],
+      pantry: Array.isArray(nextState.weeklyOptions?.pantry) ? nextState.weeklyOptions.pantry : []
+    }
   };
 
   DAYS.forEach((day) => {
@@ -461,13 +716,90 @@ function updateSyncStatus(message) {
   syncStatus.textContent = message;
 }
 
-function openRecipeModal() {
+function openRecipeModal(options = {}) {
+  const recipe = options.recipe;
+  if (recipe) {
+    editingRecipeId = recipe.id;
+    recipeModalTitle.textContent = "Rezept bearbeiten";
+    recipeSubmitButton.textContent = "Aenderungen speichern";
+    recipeNameInput.value = recipe.name;
+    recipeServingsInput.value = recipe.baseServings;
+    selectedRecipeTags = new Set(Array.isArray(recipe.tags) ? recipe.tags : []);
+    renderRecipeTagButtons();
+    populateIngredientInputs(Array.isArray(recipe.ingredients) ? recipe.ingredients : []);
+  } else {
+    resetRecipeForm();
+    recipeModalTitle.textContent = "Neues Rezept anlegen";
+    recipeSubmitButton.textContent = "Rezept speichern";
+    editingRecipeId = null;
+  }
+
   recipeModal.hidden = false;
   recipeNameInput.focus();
 }
 
 function closeRecipeModal() {
   recipeModal.hidden = true;
+  resetRecipeForm();
+  recipeModalTitle.textContent = "Neues Rezept anlegen";
+  recipeSubmitButton.textContent = "Rezept speichern";
+  editingRecipeId = null;
+}
+
+function resetRecipeForm() {
+  recipeForm.reset();
+  recipeServingsInput.value = 2;
+  selectedRecipeTags = new Set(["Mittag", "Abendessen"]);
+  renderRecipeTagButtons();
+  populateIngredientInputs([""]);
+}
+
+function renderRecipeTagButtons() {
+  recipeTagButtons.forEach((button) => {
+    const tag = button.dataset.tag;
+    const active = tag ? selectedRecipeTags.has(tag) : false;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", active ? "true" : "false");
+  });
+}
+
+function populateIngredientInputs(ingredients) {
+  ingredientList.replaceChildren();
+  const values = Array.isArray(ingredients) && ingredients.length > 0 ? ingredients : [""];
+  values.forEach((value) => {
+    ingredientList.append(createIngredientRow(value));
+  });
+}
+
+function collectIngredients() {
+  return Array.from(ingredientList.querySelectorAll("input[data-ingredient-input]"))
+    .map((input) => input.value.trim())
+    .filter(Boolean);
+}
+
+function createIngredientRow(value = "") {
+  const row = document.createElement("div");
+  row.className = "ingredient-row";
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.placeholder = "z. B. 2 Zucchini";
+  input.value = value;
+  input.dataset.ingredientInput = "true";
+
+  const removeButton = document.createElement("button");
+  removeButton.type = "button";
+  removeButton.className = "ghost-button ingredient-remove";
+  removeButton.textContent = "Entfernen";
+  removeButton.addEventListener("click", () => {
+    row.remove();
+    if (ingredientList.children.length === 0) {
+      ingredientList.append(createIngredientRow());
+    }
+  });
+
+  row.append(input, removeButton);
+  return row;
 }
 
 function setActivePage(page) {

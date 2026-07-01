@@ -6,7 +6,7 @@
   <title>Wochenplaner für Rezepte</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -14,7 +14,7 @@
     <header class="hero">
       <div class="hero-content">
         <p class="eyebrow">Wochenplanung für dein Essen</p>
-        <div class="hero-badge">Ägäisches Design · blau, weiß und sonnig</div>
+        <div class="hero-badge">Modernes Layout · schnell und klar</div>
         <h1>Rezepte wählen, Woche füllen, Einkaufsliste erzeugen.</h1>
         <p class="hero-copy">
           Plane deine Woche in einer klaren Wochenansicht, verwalte deine Rezeptbibliothek separat
@@ -46,7 +46,57 @@
             </div>
             <p class="drop-hint">Rezept pro Mahlzeit auswaehlen und Personenzahl anpassen.</p>
           </div>
+          <div class="planner-toolbar">
+            <div class="week-flow-controls" aria-label="Wochenfuehrung">
+              <button id="prev-day" class="secondary-button" type="button">Tag zurueck</button>
+              <p id="day-flow-status" class="day-flow-status">Tag 1 von 7</p>
+              <button id="next-day" class="secondary-button" type="button">Naechster Tag</button>
+            </div>
+            <div id="day-selector" class="day-selector" aria-label="Tag auswaehlen"></div>
+          </div>
           <div id="week-board" class="week-board"></div>
+
+          <section class="weekly-extras" aria-label="Wochenzusaetze">
+            <div class="panel-header panel-header-wide">
+              <div>
+                <p class="section-kicker">Wochenzusaetze</p>
+                <h2>Snacks, Haushalt und Vorrat</h2>
+              </div>
+              <p class="drop-hint">Einfach anklicken, wird fuer alle gespeichert.</p>
+            </div>
+
+            <div class="extras-grid">
+              <article class="extra-group">
+                <h3>Snacks</h3>
+                <div id="snack-options" class="extra-option-list"></div>
+                <form class="extra-add-form" data-category="snacks">
+                  <input id="snack-input" list="snack-suggestions" type="text" placeholder="Snack hinzufuegen">
+                  <datalist id="snack-suggestions"></datalist>
+                  <button class="secondary-button" type="submit">Hinzufuegen</button>
+                </form>
+              </article>
+
+              <article class="extra-group">
+                <h3>Putzmittel</h3>
+                <div id="household-options" class="extra-option-list"></div>
+                <form class="extra-add-form" data-category="household">
+                  <input id="household-input" list="household-suggestions" type="text" placeholder="Putzmittel hinzufuegen">
+                  <datalist id="household-suggestions"></datalist>
+                  <button class="secondary-button" type="submit">Hinzufuegen</button>
+                </form>
+              </article>
+
+              <article class="extra-group">
+                <h3>Vorratsschrank</h3>
+                <div id="pantry-options" class="extra-option-list"></div>
+                <form class="extra-add-form" data-category="pantry">
+                  <input id="pantry-input" list="pantry-suggestions" type="text" placeholder="Vorrat hinzufuegen">
+                  <datalist id="pantry-suggestions"></datalist>
+                  <button class="secondary-button" type="submit">Hinzufuegen</button>
+                </form>
+              </article>
+            </div>
+          </section>
         </section>
       </section>
 
@@ -102,32 +152,20 @@
 
         <fieldset class="recipe-tags-fieldset">
           <legend>Passend fuer</legend>
-          <label class="tag-option">
-            <input type="checkbox" name="recipe-tags" value="Fruehstueck">
-            <span>Fruehstueck</span>
-          </label>
-          <label class="tag-option">
-            <input type="checkbox" name="recipe-tags" value="Mittag" checked>
-            <span>Mittag</span>
-          </label>
-          <label class="tag-option">
-            <input type="checkbox" name="recipe-tags" value="Abendessen" checked>
-            <span>Abendessen</span>
-          </label>
+          <div id="recipe-tag-buttons" class="recipe-tag-buttons" role="group" aria-label="Meal Labels">
+            <button type="button" class="tag-toggle" data-tag="Fruehstueck">Fruehstueck</button>
+            <button type="button" class="tag-toggle is-active" data-tag="Mittag">Mittag</button>
+            <button type="button" class="tag-toggle is-active" data-tag="Abendessen">Abendessen</button>
+          </div>
         </fieldset>
 
-        <label>
-          Zutaten
-          <textarea
-            id="recipe-ingredients"
-            name="ingredients"
-            rows="6"
-            placeholder="Eine Zutat pro Zeile, z. B.&#10;2 Zucchini&#10;500 g Tomaten&#10;1 Packung Lasagneplatten"
-            required
-          ></textarea>
-        </label>
+        <fieldset class="ingredient-fieldset">
+          <legend>Zutaten einzeln anlegen</legend>
+          <div id="ingredient-list" class="ingredient-list"></div>
+          <button id="add-ingredient-button" class="secondary-button" type="button">+ Zutat hinzufuegen</button>
+        </fieldset>
 
-        <button class="primary-button" type="submit">Rezept speichern</button>
+        <button id="recipe-submit-button" class="primary-button" type="submit">Rezept speichern</button>
       </form>
     </section>
   </div>
@@ -140,7 +178,10 @@
         <div class="recipe-tags"></div>
         <p class="ingredient-preview"></p>
       </div>
-      <button class="ghost-button delete-recipe" type="button">Loeschen</button>
+      <div class="recipe-card-actions">
+        <button class="ghost-button edit-recipe" type="button">Bearbeiten</button>
+        <button class="ghost-button delete-recipe" type="button">Loeschen</button>
+      </div>
     </article>
   </template>
 
