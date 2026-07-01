@@ -2,6 +2,7 @@ const DAYS = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samsta
 const MEALS = ["Fruehstueck", "Mittag", "Abendessen"];
 const POLLING_INTERVAL_MS = 15000;
 const ALL_DAYS_KEY = "__all_days__";
+const SWIPE_THRESHOLD_PX = 48;
 const WEEKLY_CATEGORIES = [
   {
     key: "snacks",
@@ -66,6 +67,11 @@ const daySelector = document.querySelector("#day-selector");
 const dayFlowStatus = document.querySelector("#day-flow-status");
 const prevDayButton = document.querySelector("#prev-day");
 const nextDayButton = document.querySelector("#next-day");
+const nextOpenDayButton = document.querySelector("#next-open-day");
+const goTodayButton = document.querySelector("#go-today");
+const showAllDaysButton = document.querySelector("#show-all-days");
+const dayProgressFill = document.querySelector("#day-progress-fill");
+const dayProgressText = document.querySelector("#day-progress-text");
 const weeklyAddForms = Array.from(document.querySelectorAll(".extra-add-form"));
 const recipeLibrary = document.querySelector("#recipe-library");
 const weekBoard = document.querySelector("#week-board");
@@ -82,6 +88,12 @@ const recipeModalTitle = document.querySelector("#recipe-modal-title");
 const recipeSubmitButton = document.querySelector("#recipe-submit-button");
 const recipeCardTemplate = document.querySelector("#recipe-card-template");
 const dayCardTemplate = document.querySelector("#day-card-template");
+let touchStartX = null;
+let touchStartY = null;
+let pointerStartX = null;
+let pointerStartY = null;
+let touchStartX = null;
+let touchStartY = null;
 
 recipeForm.addEventListener("submit", handleRecipeSubmit);
 resetWeekButton.addEventListener("click", resetWeek);
@@ -95,6 +107,17 @@ openRecipeModalSecondaryButton.addEventListener("click", openRecipeModal);
 closeRecipeModalButton.addEventListener("click", closeRecipeModal);
 prevDayButton.addEventListener("click", () => stepSelectedDay(-1));
 nextDayButton.addEventListener("click", () => stepSelectedDay(1));
+nextOpenDayButton.addEventListener("click", jumpToNextOpenDay);
+goTodayButton.addEventListener("click", () => {
+  selectedDay = getCurrentDayLabel();
+  renderPlannerNavigation();
+  renderWeekBoard();
+});
+showAllDaysButton.addEventListener("click", () => {
+  selectedDay = ALL_DAYS_KEY;
+  renderPlannerNavigation();
+  renderWeekBoard();
+});
 weeklyAddForms.forEach((form) => {
   form.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -107,13 +130,7 @@ weeklyAddForms.forEach((form) => {
   });
 });
 daySelector.addEventListener("click", (event) => {
-  const button = event.target instanceof HTMLElement ? event.target.closest("button[data-day]") : null;
-  if (!button) {
-    return;
-  }
-  selectedDay = button.dataset.day || ALL_DAYS_KEY;
-  renderPlannerNavigation();
-  renderWeekBoard();
+  event.preventDefault();
 });
 recipeTagButtons.forEach((button) => {
   button.addEventListener("click", () => {
@@ -138,12 +155,23 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !recipeModal.hidden) {
     closeRecipeModal();
   }
+
+  if (recipeModal.hidden && isPlannerActive()) {
+    if (event.key === "ArrowLeft") {
+      stepSelectedDay(-1);
+    }
+    if (event.key === "ArrowRight") {
+      stepSelectedDay(1);
+    }
+  }
 });
 navTabs.forEach((tab) => {
   tab.addEventListener("click", () => {
     setActivePage(tab.dataset.page || "planner");
   });
 });
+setupPlannerSwipe();
+setupPlannerSwipe();
 
 initialize();
 
@@ -250,39 +278,46 @@ function renderPlannerNavigation() {
 
 function renderDaySelector() {
   daySelector.replaceChildren();
-  const today = getCurrentDayLabel();
-  const options = [{ key: ALL_DAYS_KEY, label: "Alle Tage" }];
-  DAYS.forEach((day) => {
-    options.push({ key: day, label: day });
-  });
 
-  options.forEach((option) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "day-chip";
-    button.dataset.day = option.key;
-    button.textContent = option.label;
-    button.classList.toggle("is-active", selectedDay === option.key);
-    if (option.key === today) {
-      button.classList.add("is-today");
+  const selectedIndex = selectedDay === ALL_DAYS_KEY ? -1 : DAYS.indexOf(selectedDay);
+
+  DAYS.forEach((day, index) => {
+    const dot = document.createElement("span");
+    dot.className = "day-dot";
+    dot.setAttribute("aria-hidden", "true");
+    if (index === selectedIndex) {
+      dot.classList.add("is-active");
     }
-    daySelector.append(button);
+    if (day === getCurrentDayLabel()) {
+      dot.classList.add("is-today");
+    }
+    daySelector.append(dot);
   });
 }
 
 function updateDayFlowStatus() {
+  const totalPlannedMeals = DAYS.reduce((sum, day) => sum + countPlannedMealsForDay(day), 0);
+  const totalMeals = DAYS.length * MEALS.length;
+
   if (selectedDay === ALL_DAYS_KEY) {
-    dayFlowStatus.textContent = "Alle Tage im Ueberblick";
+    dayFlowStatus.textContent = `Alle Tage im Ueberblick (${totalPlannedMeals}/${totalMeals} Mahlzeiten geplant)`;
     prevDayButton.disabled = false;
     nextDayButton.disabled = false;
+    nextOpenDayButton.disabled = totalPlannedMeals >= totalMeals;
+    updateDayProgress(totalPlannedMeals, totalMeals);
+    dayProgressText.textContent = `${totalPlannedMeals} von ${totalMeals} Mahlzeiten geplant`;
     return;
   }
 
   const dayIndex = DAYS.indexOf(selectedDay);
+  const plannedMeals = countPlannedMealsForDay(selectedDay);
   const position = dayIndex >= 0 ? dayIndex + 1 : 1;
   dayFlowStatus.textContent = `Tag ${position} von ${DAYS.length}`;
   prevDayButton.disabled = dayIndex <= 0;
   nextDayButton.disabled = dayIndex === DAYS.length - 1;
+  nextOpenDayButton.disabled = findNextOpenDayIndex(dayIndex) === -1;
+  updateDayProgress(plannedMeals, MEALS.length);
+  dayProgressText.textContent = `${plannedMeals} von ${MEALS.length} Mahlzeiten geplant`;
 }
 
 function stepSelectedDay(direction) {
@@ -309,6 +344,148 @@ function stepSelectedDay(direction) {
   selectedDay = DAYS[nextIndex];
   renderPlannerNavigation();
   renderWeekBoard();
+}
+
+function setupPlannerSwipe() {
+  if (!weekBoard) {
+    return;
+  }
+
+  weekBoard.addEventListener("touchstart", (event) => {
+    if (!isPlannerActive() || event.touches.length !== 1) {
+      return;
+    }
+    touchStartX = event.touches[0].clientX;
+    touchStartY = event.touches[0].clientY;
+  }, { passive: true });
+
+  weekBoard.addEventListener("touchend", (event) => {
+    if (!isPlannerActive() || touchStartX === null || touchStartY === null) {
+      return;
+    }
+
+    const touch = event.changedTouches[0];
+    const deltaX = touch.clientX - touchStartX;
+    const deltaY = touch.clientY - touchStartY;
+    touchStartX = null;
+    touchStartY = null;
+    applySwipeDelta(deltaX, deltaY);
+  }, { passive: true });
+
+  weekBoard.addEventListener("pointerdown", (event) => {
+    if (!isPlannerActive() || event.pointerType === "touch") {
+      return;
+    }
+    pointerStartX = event.clientX;
+    pointerStartY = event.clientY;
+  });
+
+  weekBoard.addEventListener("pointerup", (event) => {
+    if (!isPlannerActive() || pointerStartX === null || pointerStartY === null || event.pointerType === "touch") {
+      return;
+    }
+    const deltaX = event.clientX - pointerStartX;
+    const deltaY = event.clientY - pointerStartY;
+    pointerStartX = null;
+    pointerStartY = null;
+    applySwipeDelta(deltaX, deltaY);
+  });
+
+  weekBoard.addEventListener("pointercancel", () => {
+    pointerStartX = null;
+    pointerStartY = null;
+  });
+}
+
+function applySwipeDelta(deltaX, deltaY) {
+  // Ignore vertical gestures and very short drags so scrolling remains natural.
+  if (Math.abs(deltaX) < SWIPE_THRESHOLD_PX || Math.abs(deltaX) <= Math.abs(deltaY)) {
+    return;
+  }
+
+  if (deltaX < 0) {
+    stepSelectedDay(1);
+    return;
+  }
+
+  stepSelectedDay(-1);
+}
+
+function setupPlannerSwipe() {
+  if (!weekBoard) {
+    return;
+  }
+
+  weekBoard.addEventListener("touchstart", (event) => {
+    if (!isPlannerActive() || event.touches.length !== 1) {
+      return;
+    }
+    touchStartX = event.touches[0].clientX;
+    touchStartY = event.touches[0].clientY;
+  }, { passive: true });
+
+  weekBoard.addEventListener("touchend", (event) => {
+    if (!isPlannerActive() || touchStartX === null || touchStartY === null) {
+      return;
+    }
+
+    const touch = event.changedTouches[0];
+    const deltaX = touch.clientX - touchStartX;
+    const deltaY = touch.clientY - touchStartY;
+    touchStartX = null;
+    touchStartY = null;
+
+    // Only react to clear horizontal swipes, not vertical scrolling.
+    if (Math.abs(deltaX) < SWIPE_THRESHOLD_PX || Math.abs(deltaX) <= Math.abs(deltaY)) {
+      return;
+    }
+
+    if (deltaX < 0) {
+      stepSelectedDay(1);
+      return;
+    }
+
+    stepSelectedDay(-1);
+  }, { passive: true });
+}
+
+function jumpToNextOpenDay() {
+  const startIndex = selectedDay === ALL_DAYS_KEY ? -1 : DAYS.indexOf(selectedDay);
+  const nextOpenIndex = findNextOpenDayIndex(startIndex);
+  if (nextOpenIndex === -1) {
+    updateSyncStatus("Alle Tage sind vollstaendig geplant.");
+    return;
+  }
+
+  selectedDay = DAYS[nextOpenIndex];
+  renderPlannerNavigation();
+  renderWeekBoard();
+}
+
+function findNextOpenDayIndex(startIndex) {
+  for (let index = startIndex + 1; index < DAYS.length; index += 1) {
+    if (countPlannedMealsForDay(DAYS[index]) < MEALS.length) {
+      return index;
+    }
+  }
+  return -1;
+}
+
+function countPlannedMealsForDay(day) {
+  return MEALS.reduce((count, meal) => {
+    const entry = state.weekPlan?.[day]?.[meal];
+    return entry?.recipeId ? count + 1 : count;
+  }, 0);
+}
+
+function updateDayProgress(done, total) {
+  const ratio = total > 0 ? Math.max(0, Math.min(1, done / total)) : 0;
+  dayProgressFill.style.width = `${Math.round(ratio * 100)}%`;
+}
+
+function isPlannerActive() {
+  const activeView = pageViews.find((view) => view.classList.contains("is-active"));
+  return Boolean(activeView && activeView.dataset.pageView === "planner");
 }
 
 function renderRecipeLibrary() {

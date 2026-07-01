@@ -48,10 +48,22 @@
           </div>
           <div class="planner-toolbar">
             <div class="week-flow-controls" aria-label="Wochenfuehrung">
-              <button id="prev-day" class="secondary-button" type="button">Tag zurueck</button>
+              <div class="flow-primary-actions">
+                <button id="prev-day" class="secondary-button" type="button">Tag zurueck</button>
+                <button id="next-day" class="secondary-button" type="button">Naechster Tag</button>
+              </div>
               <p id="day-flow-status" class="day-flow-status">Tag 1 von 7</p>
-              <button id="next-day" class="secondary-button" type="button">Naechster Tag</button>
+              <div class="flow-secondary-actions">
+                <button id="next-open-day" class="ghost-button" type="button">Naechster offener Tag</button>
+                <button id="go-today" class="ghost-button" type="button">Heute</button>
+                <button id="show-all-days" class="ghost-button" type="button">Alle Tage</button>
+              </div>
             </div>
+            <div class="day-progress" aria-hidden="true">
+              <div id="day-progress-fill" class="day-progress-fill"></div>
+            </div>
+            <p id="day-progress-text" class="day-progress-text">0 von 3 Mahlzeiten geplant</p>
+            <p class="day-nav-hint">Tipp: Wische im Wochenbereich nach links oder rechts, um den Tag zu wechseln.</p>
             <div id="day-selector" class="day-selector" aria-label="Tag auswaehlen"></div>
           </div>
           <div id="week-board" class="week-board"></div>

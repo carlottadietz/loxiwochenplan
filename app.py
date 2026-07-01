@@ -623,4 +623,9 @@ ensure_database()
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "10000")))
+    port = int(os.environ.get("PORT", "10000"))
+    from wsgiref.simple_server import make_server
+
+    print(f"Running WSGI server on http://0.0.0.0:{port}")
+    with make_server("0.0.0.0", port, app) as server:
+        server.serve_forever()
