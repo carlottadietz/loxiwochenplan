@@ -83,6 +83,7 @@ const dayProgressFill = document.querySelector("#day-progress-fill");
 const dayProgressText = document.querySelector("#day-progress-text");
 const weekPicker = document.querySelector("#week-picker");
 const prevWeekButton = document.querySelector("#prev-week");
+const currentWeekButton = document.querySelector("#current-week");
 const nextWeekButton = document.querySelector("#next-week");
 const weeklyAddForms = Array.from(document.querySelectorAll(".extra-add-form"));
 const recipeLibrary = document.querySelector("#recipe-library");
@@ -137,6 +138,12 @@ if (weekPicker) {
 if (prevWeekButton) {
   prevWeekButton.addEventListener("click", () => {
     selectedWeekStart = shiftWeek(selectedWeekStart || isoDateToday(), -1);
+    syncState({ announce: true });
+  });
+}
+if (currentWeekButton) {
+  currentWeekButton.addEventListener("click", () => {
+    selectedWeekStart = currentWeekStartKey();
     syncState({ announce: true });
   });
 }
@@ -882,6 +889,13 @@ function replaceState(nextState) {
 
 function isoDateToday() {
   return formatDateKey(new Date());
+}
+
+function currentWeekStartKey() {
+  const now = new Date();
+  const day = (now.getDay() + 6) % 7;
+  now.setDate(now.getDate() - day);
+  return formatDateKey(now);
 }
 
 function formatDateKey(dateValue) {
