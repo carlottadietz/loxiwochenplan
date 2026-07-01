@@ -2,7 +2,6 @@ const DAYS = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samsta
 const MEALS = ["Fruehstueck", "Mittag", "Abendessen"];
 const POLLING_INTERVAL_MS = 15000;
 const ALL_DAYS_KEY = "__all_days__";
-const SWIPE_THRESHOLD_PX = 48;
 const WEEKLY_CATEGORIES = [
   {
     key: "snacks",
@@ -73,7 +72,6 @@ const showAllDaysButton = document.querySelector("#show-all-days");
 const dayProgressFill = document.querySelector("#day-progress-fill");
 const dayProgressText = document.querySelector("#day-progress-text");
 const weeklyAddForms = Array.from(document.querySelectorAll(".extra-add-form"));
-const plannerPage = document.querySelector("#planner-page");
 const recipeLibrary = document.querySelector("#recipe-library");
 const weekBoard = document.querySelector("#week-board");
 const shoppingList = document.querySelector("#shopping-list");
@@ -89,11 +87,6 @@ const recipeModalTitle = document.querySelector("#recipe-modal-title");
 const recipeSubmitButton = document.querySelector("#recipe-submit-button");
 const recipeCardTemplate = document.querySelector("#recipe-card-template");
 const dayCardTemplate = document.querySelector("#day-card-template");
-let touchStartX = null;
-let touchStartY = null;
-let pointerStartX = null;
-let pointerStartY = null;
-let swipeGestureConsumed = false;
 
 recipeForm.addEventListener("submit", handleRecipeSubmit);
 resetWeekButton.addEventListener("click", resetWeek);
@@ -130,7 +123,14 @@ weeklyAddForms.forEach((form) => {
   });
 });
 daySelector.addEventListener("click", (event) => {
-  event.preventDefault();
+  const button = event.target instanceof HTMLElement ? event.target.closest("button[data-day]") : null;
+  if (!button) {
+    return;
+  }
+
+  selectedDay = button.dataset.day || getCurrentDayLabel();
+  renderPlannerNavigation();
+  renderWeekBoard();
 });
 recipeTagButtons.forEach((button) => {
   button.addEventListener("click", () => {
@@ -170,7 +170,6 @@ navTabs.forEach((tab) => {
     setActivePage(tab.dataset.page || "planner");
   });
 });
-setupPlannerSwipe();
 
 initialize();
 
@@ -278,20 +277,21 @@ function renderPlannerNavigation() {
 function renderDaySelector() {
   daySelector.replaceChildren();
 
-  const selectedIndex = selectedDay === ALL_DAYS_KEY ? -1 : DAYS.indexOf(selectedDay);
+  DAYS.forEach((day) => {
+    const dayButton = document.createElement("button");
+    dayButton.type = "button";
+    dayButton.className = "day-chip";
+    dayButton.dataset.day = day;
+    dayButton.textContent = day;
 
-  DAYS.forEach((day, index) => {
-    const dayLabel = document.createElement("span");
-    dayLabel.className = "day-chip-label";
-    dayLabel.textContent = day;
-    dayLabel.setAttribute("aria-hidden", "true");
-    if (index === selectedIndex) {
-      dayLabel.classList.add("is-active");
+    if (selectedDay === day) {
+      dayButton.classList.add("is-active");
     }
     if (day === getCurrentDayLabel()) {
-      dayLabel.classList.add("is-today");
+      dayButton.classList.add("is-today");
     }
-    daySelector.append(dayLabel);
+
+    daySelector.append(dayButton);
   });
 }
 
@@ -344,111 +344,6 @@ function stepSelectedDay(direction) {
   selectedDay = DAYS[nextIndex];
   renderPlannerNavigation();
   renderWeekBoard();
-}
-
-function setupPlannerSwipe() {
-  const swipeSurface = plannerPage || weekBoard;
-  if (!swipeSurface) {
-    return;
-  }
-
-  swipeSurface.addEventListener("touchstart", (event) => {
-    if (!isPlannerActive() || event.touches.length !== 1) {
-      return;
-    }
-    swipeGestureConsumed = false;
-    touchStartX = event.touches[0].clientX;
-    touchStartY = event.touches[0].clientY;
-  }, { passive: true });
-
-  swipeSurface.addEventListener("touchmove", (event) => {
-    if (!isPlannerActive() || swipeGestureConsumed || touchStartX === null || touchStartY === null || event.touches.length !== 1) {
-      return;
-    }
-
-    const touch = event.touches[0];
-    const deltaX = touch.clientX - touchStartX;
-    const deltaY = touch.clientY - touchStartY;
-
-    if (Math.abs(deltaX) >= SWIPE_THRESHOLD_PX && Math.abs(deltaX) > Math.abs(deltaY)) {
-      applySwipeDelta(deltaX, deltaY);
-      swipeGestureConsumed = true;
-    }
-  }, { passive: true });
-
-  swipeSurface.addEventListener("touchend", () => {
-    touchStartX = null;
-    touchStartY = null;
-    swipeGestureConsumed = false;
-  }, { passive: true });
-
-  swipeSurface.addEventListener("pointerdown", (event) => {
-    if (!isPlannerActive() || event.pointerType === "touch") {
-      return;
-    }
-    swipeGestureConsumed = false;
-    pointerStartX = event.clientX;
-    pointerStartY = event.clientY;
-  });
-
-  swipeSurface.addEventListener("pointermove", (event) => {
-    if (
-      !isPlannerActive()
-      || swipeGestureConsumed
-      || pointerStartX === null
-      || pointerStartY === null
-      || event.pointerType === "touch"
-    ) {
-      return;
-    }
-
-    const deltaX = event.clientX - pointerStartX;
-    const deltaY = event.clientY - pointerStartY;
-    if (Math.abs(deltaX) >= SWIPE_THRESHOLD_PX && Math.abs(deltaX) > Math.abs(deltaY)) {
-      applySwipeDelta(deltaX, deltaY);
-      swipeGestureConsumed = true;
-      pointerStartX = null;
-      pointerStartY = null;
-    }
-  });
-
-  swipeSurface.addEventListener("pointerup", () => {
-    pointerStartX = null;
-    pointerStartY = null;
-    swipeGestureConsumed = false;
-  });
-
-  swipeSurface.addEventListener("pointercancel", () => {
-    pointerStartX = null;
-    pointerStartY = null;
-    swipeGestureConsumed = false;
-  });
-
-  swipeSurface.addEventListener("touchcancel", () => {
-    if (!isPlannerActive() || touchStartX === null || touchStartY === null) {
-      touchStartX = null;
-      touchStartY = null;
-      swipeGestureConsumed = false;
-      return;
-    }
-    touchStartX = null;
-    touchStartY = null;
-    swipeGestureConsumed = false;
-  }, { passive: true });
-}
-
-function applySwipeDelta(deltaX, deltaY) {
-  // Ignore vertical gestures and very short drags so scrolling remains natural.
-  if (Math.abs(deltaX) < SWIPE_THRESHOLD_PX || Math.abs(deltaX) <= Math.abs(deltaY)) {
-    return;
-  }
-
-  if (deltaX < 0) {
-    stepSelectedDay(1);
-    return;
-  }
-
-  stepSelectedDay(-1);
 }
 
 function jumpToNextOpenDay() {

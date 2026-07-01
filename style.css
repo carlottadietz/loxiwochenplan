@@ -9,9 +9,9 @@
   --accent: #a14f2a;
   --accent-dark: #6f3318;
   --accent-soft: #f6dfcf;
-  --accent-alt: #75925a;
+  --accent-alt: #a14f2a;
   --bubble-peach: #f6dbc7;
-  --bubble-mint: #dde9d0;
+  --bubble-mint: #f0d8c6;
   --bubble-sand: #efe2ce;
   --shadow: 0 18px 44px rgba(80, 48, 29, 0.12);
   --radius-large: 28px;
@@ -30,7 +30,7 @@ body {
   color: var(--text);
   background:
     radial-gradient(circle at 11% -8%, rgba(161, 79, 42, 0.2), transparent 35%),
-    radial-gradient(circle at 88% 2%, rgba(221, 233, 208, 0.56), transparent 30%),
+    radial-gradient(circle at 88% 2%, rgba(240, 216, 198, 0.45), transparent 30%),
     radial-gradient(circle at 20% 89%, rgba(246, 219, 199, 0.45), transparent 33%),
     var(--bg-strong);
 }
@@ -58,7 +58,7 @@ body::after {
   left: -70px;
   bottom: 8vh;
   border-radius: 57% 43% 50% 50%;
-  background: linear-gradient(135deg, rgba(221, 233, 208, 0.58), rgba(255, 255, 255, 0));
+  background: linear-gradient(135deg, rgba(246, 223, 207, 0.56), rgba(255, 255, 255, 0));
 }
 
 button,
@@ -86,7 +86,7 @@ select {
   padding: 24px;
   border-radius: var(--radius-large);
   background:
-    radial-gradient(circle at 9% 14%, rgba(221, 233, 208, 0.56), transparent 35%),
+    radial-gradient(circle at 9% 14%, rgba(246, 223, 207, 0.56), transparent 35%),
     radial-gradient(circle at 84% 16%, rgba(246, 223, 207, 0.56), transparent 32%),
     linear-gradient(115deg, rgba(255, 252, 248, 0.98), rgba(248, 241, 233, 0.92));
   border: 1px solid rgba(104, 72, 48, 0.13);
@@ -187,7 +187,7 @@ h2 {
   height: 10px;
   border-radius: 999px;
   border: 1px solid rgba(139, 69, 35, 0.2);
-  background: linear-gradient(90deg, rgba(161, 79, 42, 0.9), rgba(117, 146, 90, 0.62), rgba(161, 79, 42, 0));
+  background: linear-gradient(90deg, rgba(161, 79, 42, 0.9), rgba(198, 131, 95, 0.5), rgba(161, 79, 42, 0));
   position: relative;
   overflow: hidden;
 }
@@ -287,7 +287,7 @@ h2 {
 .day-progress {
   height: 8px;
   border-radius: 999px;
-  background: rgba(117, 146, 90, 0.2);
+  background: rgba(161, 79, 42, 0.2);
   overflow: hidden;
   margin: 10px 0 8px;
 }
@@ -296,7 +296,7 @@ h2 {
   width: 0;
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #a14f2a, #c6835f, #75925a);
+  background: linear-gradient(90deg, #a14f2a, #c6835f, #a14f2a);
   transition: width 180ms ease;
 }
 
@@ -324,31 +324,30 @@ h2 {
   min-height: 36px;
 }
 
-.day-chip-label {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 30px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.78);
+.day-chip {
   border: 1px solid rgba(111, 92, 75, 0.2);
+  border-radius: 999px;
+  padding: 7px 12px;
+  background: rgba(255, 255, 255, 0.9);
   color: var(--muted);
-  font-size: 0.84rem;
+  font-size: 0.86rem;
   font-weight: 700;
-  user-select: none;
+  cursor: pointer;
   transition: transform 160ms ease, background 160ms ease, color 160ms ease;
 }
 
-.day-chip-label.is-today {
+.day-chip:hover {
+  transform: translateY(-1px);
+}
+
+.day-chip.is-today {
   border-style: dashed;
 }
 
-.day-chip-label.is-active {
-  background: linear-gradient(90deg, #a14f2a, #75925a);
+.day-chip.is-active {
+  background: linear-gradient(135deg, #a14f2a, #bf7550);
   color: #fffaf7;
   border-color: transparent;
-  transform: translateY(-1px);
 }
 
 .panel-header {
@@ -509,8 +508,8 @@ select:focus {
 }
 
 .ghost-button {
-  background: rgba(221, 233, 208, 0.5);
-  color: #4b5f38;
+  background: rgba(246, 223, 207, 0.58);
+  color: var(--accent-dark);
   padding-inline: 14px;
 }
 
@@ -586,26 +585,10 @@ select:focus {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px;
-  touch-action: pan-y;
 }
 
 .week-board.single-day-mode {
   grid-template-columns: minmax(0, 1fr);
-}
-
-.week-board.single-day-mode::before {
-  content: "<- Wischen zum Tagwechsel ->";
-  display: block;
-  grid-column: 1 / -1;
-  justify-self: center;
-  margin-bottom: -4px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: rgba(221, 233, 208, 0.58);
-  color: #4b5f38;
-  font-size: 0.82rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
 }
 
 .weekly-extras {
@@ -632,7 +615,7 @@ select:focus {
 }
 
 .extra-group:nth-child(2) {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(221, 233, 208, 0.8));
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(246, 223, 207, 0.74));
 }
 
 .extra-group:nth-child(3) {
