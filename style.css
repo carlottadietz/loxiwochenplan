@@ -952,3 +952,125 @@ select:focus {
     width: 100%;
   }
 }
+
+/* Royal blue + orange theme overrides */
+:root {
+  --bg: #0a1330;
+  --bg-strong: #0a1330;
+  --panel: rgba(16, 30, 74, 0.9);
+  --panel-border: rgba(255, 145, 45, 0.28);
+  --text: #eff3ff;
+  --muted: #b9c7f2;
+  --accent: #ff922d;
+  --accent-dark: #d96b00;
+  --accent-soft: rgba(255, 146, 45, 0.16);
+  --accent-alt: #2f58c6;
+  --shadow: 0 18px 44px rgba(5, 11, 29, 0.55);
+}
+
+body {
+  background: var(--bg-strong);
+}
+
+body::before {
+  background: rgba(47, 88, 198, 0.18);
+}
+
+body::after {
+  background: rgba(255, 146, 45, 0.12);
+}
+
+.hero,
+.top-nav,
+.panel,
+.panel-accent,
+.modal-card,
+.day-card,
+.extra-group,
+.extra-group:nth-child(1),
+.extra-group:nth-child(2),
+.extra-group:nth-child(3),
+.recipe-card,
+.planned-recipe,
+.shopping-list li,
+.empty-state {
+  background: rgba(14, 27, 68, 0.88);
+  border-color: rgba(255, 145, 45, 0.24);
+  box-shadow: var(--shadow);
+}
+
+.hero-art {
+  border-color: rgba(255, 145, 45, 0.4);
+  background: rgba(255, 146, 45, 0.9);
+}
+
+.hero-art::after {
+  background: none;
+}
+
+.nav-tab {
+  color: #d7e2ff;
+}
+
+.nav-tab.is-active,
+.tag-toggle.is-active,
+.primary-button {
+  background: #ff922d;
+  color: #2a1806;
+}
+
+.secondary-button,
+.ghost-button,
+.tag-toggle {
+  background: rgba(37, 64, 143, 0.52);
+  color: #e7edff;
+  border-color: rgba(114, 146, 238, 0.38);
+}
+
+input,
+textarea,
+select,
+.drop-zone,
+.meal-slot,
+.extra-option-item {
+  background: rgba(20, 37, 90, 0.84);
+  color: #f2f6ff;
+  border-color: rgba(114, 146, 238, 0.38);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #9eb3ec;
+}
+
+.meal-select {
+  background: rgba(61, 89, 171, 0.95);
+  border-color: rgba(140, 168, 246, 0.5);
+  color: #ffffff;
+}
+
+.day-chip {
+  background: #1a3f99;
+  border-color: rgba(110, 142, 236, 0.54);
+  color: #eef3ff;
+}
+
+.day-chip.is-active {
+  background: #ff922d;
+  color: #2f1a07;
+}
+
+.day-progress {
+  background: rgba(82, 118, 225, 0.35);
+}
+
+.day-progress-fill {
+  background: #ff922d;
+}
+
+.recipe-tag,
+.hero-badge,
+.shopping-item-cluster-start {
+  background: rgba(255, 146, 45, 0.16);
+  color: #ffd8b3;
+}
