@@ -657,7 +657,6 @@ function renderShoppingList() {
     checkbox.checked = item.checked;
     checkbox.addEventListener("change", async () => {
       try {
-        const nextState = await apiFetch("/api/shopping-list", {
         const nextState = await apiFetch(withWeek("/api/shopping-list"), {
           method: "PUT",
           body: JSON.stringify({ itemId: item.id, checked: checkbox.checked })
