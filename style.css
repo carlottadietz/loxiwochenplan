@@ -1,19 +1,19 @@
 :root {
   color-scheme: light;
-  --bg: #edf4eb;
-  --bg-strong: linear-gradient(165deg, #f7fbf6 0%, #edf4eb 45%, #e6efe3 100%);
-  --panel: rgba(248, 252, 247, 0.92);
-  --panel-border: rgba(95, 127, 90, 0.16);
-  --text: #243221;
-  --muted: #52664d;
-  --accent: #789a74;
-  --accent-dark: #4f6f4d;
-  --accent-soft: #e4eee1;
-  --accent-alt: #789a74;
-  --bubble-peach: #dbe7d8;
-  --bubble-mint: #e7f0e4;
-  --bubble-sand: #d9e5d5;
-  --shadow: 0 18px 44px rgba(62, 90, 57, 0.12);
+  --bg: #f8eee5;
+  --bg-strong: linear-gradient(165deg, #fdf7f1 0%, #f8eee5 45%, #f3e2d2 100%);
+  --panel: rgba(255, 249, 243, 0.92);
+  --panel-border: rgba(146, 87, 42, 0.16);
+  --text: #352218;
+  --muted: #76503a;
+  --accent: #cf7a3a;
+  --accent-dark: #8f4d23;
+  --accent-soft: #f8e3d2;
+  --accent-alt: #c96f2e;
+  --bubble-peach: #f3dccb;
+  --bubble-mint: #f7e8db;
+  --bubble-sand: #efd5c1;
+  --shadow: 0 18px 44px rgba(112, 63, 26, 0.12);
   --radius-large: 28px;
   --radius-medium: 20px;
   --radius-small: 14px;
@@ -29,9 +29,9 @@ body {
   font-family: "Manrope", sans-serif;
   color: var(--text);
   background:
-    radial-gradient(circle at 11% -8%, rgba(120, 154, 116, 0.22), transparent 35%),
-    radial-gradient(circle at 88% 2%, rgba(227, 238, 223, 0.5), transparent 30%),
-    radial-gradient(circle at 20% 89%, rgba(214, 230, 209, 0.45), transparent 33%),
+    radial-gradient(circle at 11% -8%, rgba(207, 122, 58, 0.22), transparent 35%),
+    radial-gradient(circle at 88% 2%, rgba(245, 221, 202, 0.5), transparent 30%),
+    radial-gradient(circle at 20% 89%, rgba(239, 201, 171, 0.42), transparent 33%),
     var(--bg-strong);
 }
 
@@ -86,10 +86,10 @@ select {
   padding: 24px;
   border-radius: var(--radius-large);
   background:
-    radial-gradient(circle at 9% 14%, rgba(227, 238, 223, 0.56), transparent 35%),
-    radial-gradient(circle at 84% 16%, rgba(214, 230, 209, 0.56), transparent 32%),
-    linear-gradient(115deg, rgba(250, 253, 249, 0.98), rgba(238, 246, 235, 0.92));
-  border: 1px solid rgba(95, 127, 90, 0.13);
+    radial-gradient(circle at 9% 14%, rgba(248, 225, 209, 0.56), transparent 35%),
+    radial-gradient(circle at 84% 16%, rgba(241, 205, 176, 0.56), transparent 32%),
+    linear-gradient(115deg, rgba(255, 251, 246, 0.98), rgba(251, 236, 223, 0.92));
+  border: 1px solid rgba(146, 87, 42, 0.13);
   box-shadow: var(--shadow);
 }
 
@@ -186,8 +186,8 @@ h2 {
   width: min(100%, 520px);
   height: 10px;
   border-radius: 999px;
-  border: 1px solid rgba(79, 111, 76, 0.2);
-  background: linear-gradient(90deg, rgba(120, 154, 116, 0.92), rgba(167, 193, 160, 0.56), rgba(120, 154, 116, 0));
+  border: 1px solid rgba(143, 77, 35, 0.2);
+  background: linear-gradient(90deg, rgba(207, 122, 58, 0.92), rgba(240, 187, 145, 0.56), rgba(207, 122, 58, 0));
   position: relative;
   overflow: hidden;
 }
@@ -207,8 +207,8 @@ h2 {
   margin: 18px 0 24px;
   padding: 10px;
   border-radius: var(--radius-large);
-  background: rgba(250, 253, 249, 0.9);
-  border: 1px solid rgba(95, 127, 90, 0.12);
+  background: rgba(255, 250, 245, 0.92);
+  border: 1px solid rgba(146, 87, 42, 0.12);
   box-shadow: var(--shadow);
   backdrop-filter: blur(8px);
 }
@@ -224,9 +224,9 @@ h2 {
 }
 
 .nav-tab.is-active {
-  background: linear-gradient(135deg, var(--accent), #a5c2a2);
+  background: linear-gradient(135deg, var(--accent), #e29a62);
   color: #fffaf7;
-  box-shadow: 0 8px 18px rgba(79, 111, 76, 0.2);
+  box-shadow: 0 8px 18px rgba(143, 77, 35, 0.2);
 }
 
 .page-view {
@@ -251,7 +251,7 @@ h2 {
 }
 
 .panel-accent {
-  background: linear-gradient(180deg, rgba(250, 253, 249, 0.97), rgba(238, 246, 235, 0.92));
+  background: linear-gradient(180deg, rgba(255, 252, 248, 0.97), rgba(251, 236, 223, 0.92));
 }
 
 .planner-toolbar {
@@ -286,8 +286,8 @@ h2 {
   justify-content: center;
   padding: 10px 12px;
   border-radius: 999px;
-  border: 1px solid rgba(79, 111, 76, 0.2);
-  background: rgba(248, 252, 247, 0.9);
+  border: 1px solid rgba(143, 77, 35, 0.2);
+  background: rgba(255, 248, 240, 0.9);
 }
 
 #prev-day,
@@ -309,7 +309,7 @@ h2 {
 .day-progress {
   height: 8px;
   border-radius: 999px;
-  background: rgba(120, 154, 116, 0.24);
+  background: rgba(207, 122, 58, 0.24);
   overflow: hidden;
   margin: 10px 0 8px;
 }
@@ -318,7 +318,7 @@ h2 {
   width: 0;
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #789a74, #b2c9ae, #789a74);
+  background: linear-gradient(90deg, #cf7a3a, #f0bb91, #cf7a3a);
   transition: width 180ms ease;
 }
 
@@ -347,11 +347,11 @@ h2 {
 }
 
 .day-chip {
-  border: 1px solid rgba(82, 102, 77, 0.2);
+  border: 1px solid rgba(124, 66, 30, 0.36);
   border-radius: 999px;
   padding: 7px 12px;
-  background: rgba(255, 255, 255, 0.9);
-  color: var(--muted);
+  background: linear-gradient(145deg, #b5602f, #9f4f23);
+  color: #fff7ef;
   font-size: 0.86rem;
   font-weight: 700;
   cursor: pointer;
@@ -367,7 +367,7 @@ h2 {
 }
 
 .day-chip.is-active {
-  background: linear-gradient(135deg, #789a74, #a5c2a2);
+  background: linear-gradient(135deg, #8f4319, #d78349);
   color: #fffaf7;
   border-color: transparent;
 }
@@ -452,7 +452,7 @@ h2 {
 }
 
 .tag-toggle {
-  border: 1px solid rgba(95, 127, 90, 0.22);
+  border: 1px solid rgba(146, 87, 42, 0.22);
   border-radius: 999px;
   padding: 10px 14px;
   background: rgba(255, 255, 255, 0.92);
@@ -464,11 +464,11 @@ h2 {
 
 .tag-toggle:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 12px rgba(79, 111, 76, 0.14);
+  box-shadow: 0 6px 12px rgba(143, 77, 35, 0.14);
 }
 
 .tag-toggle.is-active {
-  background: linear-gradient(135deg, var(--accent), #a5c2a2);
+  background: linear-gradient(135deg, var(--accent), #e29a62);
   color: #ffffff;
   border-color: transparent;
 }
@@ -493,17 +493,17 @@ input,
 textarea,
 select {
   width: 100%;
-  border: 1px solid rgba(95, 127, 90, 0.24);
+  border: 1px solid rgba(146, 87, 42, 0.24);
   border-radius: var(--radius-small);
   padding: 14px 16px;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 251, 246, 0.95);
   color: var(--text);
 }
 
 input:focus,
 textarea:focus,
 select:focus {
-  outline: 2px solid rgba(120, 154, 116, 0.25);
+  outline: 2px solid rgba(207, 122, 58, 0.25);
   border-color: var(--accent);
 }
 
@@ -518,19 +518,19 @@ select:focus {
 }
 
 .primary-button {
-  background: linear-gradient(135deg, #789a74, #4f6f4d);
+  background: linear-gradient(135deg, #cf7a3a, #8f4d23);
   color: #fffaf7;
-  box-shadow: 0 10px 24px rgba(79, 111, 76, 0.22);
+  box-shadow: 0 10px 24px rgba(143, 77, 35, 0.22);
 }
 
 .secondary-button {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(236, 246, 233, 0.8));
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.97), rgba(252, 237, 224, 0.88));
   color: var(--text);
-  border: 1px solid rgba(95, 127, 90, 0.2);
+  border: 1px solid rgba(146, 87, 42, 0.2);
 }
 
 .ghost-button {
-  background: rgba(223, 236, 219, 0.58);
+  background: rgba(248, 227, 210, 0.8);
   color: var(--accent-dark);
   padding-inline: 14px;
 }
@@ -557,8 +557,8 @@ select:focus {
   align-items: flex-start;
   padding: 16px;
   border-radius: 18px;
-  border: 1px solid rgba(95, 127, 90, 0.16);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(238, 246, 235, 0.9));
+  border: 1px solid rgba(146, 87, 42, 0.16);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(251, 237, 225, 0.9));
 }
 
 .recipe-card {
@@ -568,7 +568,7 @@ select:focus {
 
 .recipe-card:hover {
   transform: translateY(-1px);
-  box-shadow: 0 12px 24px rgba(62, 90, 57, 0.1);
+  box-shadow: 0 12px 24px rgba(112, 63, 26, 0.1);
 }
 
 .recipe-card-actions {
@@ -597,7 +597,7 @@ select:focus {
 .recipe-tag {
   padding: 6px 10px;
   border-radius: 999px;
-  background: rgba(120, 154, 116, 0.14);
+  background: rgba(207, 122, 58, 0.16);
   color: var(--accent-dark);
   font-size: 0.88rem;
   font-weight: 700;
@@ -616,7 +616,7 @@ select:focus {
 .weekly-extras {
   margin-top: 24px;
   padding-top: 20px;
-  border-top: 1px solid rgba(95, 127, 90, 0.14);
+  border-top: 1px solid rgba(146, 87, 42, 0.14);
 }
 
 .extras-grid {
@@ -628,20 +628,20 @@ select:focus {
 .extra-group {
   padding: 14px;
   border-radius: 18px;
-  border: 1px solid rgba(95, 127, 90, 0.14);
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(231, 242, 228, 0.8));
+  border: 1px solid rgba(146, 87, 42, 0.14);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(250, 236, 223, 0.84));
 }
 
 .extra-group:nth-child(1) {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(223, 236, 219, 0.8));
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(245, 225, 209, 0.84));
 }
 
 .extra-group:nth-child(2) {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(215, 232, 209, 0.82));
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(242, 216, 196, 0.84));
 }
 
 .extra-group:nth-child(3) {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(230, 242, 226, 0.8));
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(249, 233, 220, 0.84));
 }
 
 .extra-group h3 {
@@ -660,7 +660,7 @@ select:focus {
   justify-content: space-between;
   gap: 12px;
   padding: 10px 12px;
-  border: 1px solid rgba(95, 127, 90, 0.18);
+  border: 1px solid rgba(146, 87, 42, 0.18);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.9);
   font-weight: 600;
@@ -677,8 +677,8 @@ select:focus {
 
 .extra-option-item:hover {
   transform: translateY(-1px);
-  border-color: rgba(120, 154, 116, 0.42);
-  box-shadow: 0 6px 14px rgba(79, 111, 76, 0.1);
+  border-color: rgba(207, 122, 58, 0.42);
+  box-shadow: 0 6px 14px rgba(143, 77, 35, 0.1);
 }
 
 .extra-option-item input {
@@ -687,7 +687,7 @@ select:focus {
 }
 
 .extra-remove-button {
-  border: 1px solid rgba(95, 127, 90, 0.26);
+  border: 1px solid rgba(146, 87, 42, 0.26);
   border-radius: 999px;
   padding: 4px 10px;
   background: rgba(255, 255, 255, 0.95);
@@ -698,7 +698,7 @@ select:focus {
 }
 
 .extra-remove-button:hover {
-  background: rgba(226, 235, 223, 0.92);
+  background: rgba(247, 227, 210, 0.92);
 }
 
 .extra-add-form {
@@ -712,16 +712,16 @@ select:focus {
   padding: 20px;
   border-radius: 22px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(238, 246, 235, 0.96)),
-    linear-gradient(135deg, rgba(120, 154, 116, 0.1), rgba(255, 255, 255, 0));
-  border: 1px solid rgba(95, 127, 90, 0.16);
-  box-shadow: 0 12px 30px rgba(62, 90, 57, 0.1);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(251, 237, 225, 0.96)),
+    linear-gradient(135deg, rgba(207, 122, 58, 0.1), rgba(255, 255, 255, 0));
+  border: 1px solid rgba(146, 87, 42, 0.16);
+  box-shadow: 0 12px 30px rgba(112, 63, 26, 0.1);
   transition: transform 160ms ease, box-shadow 160ms ease;
 }
 
 .day-card:hover {
   transform: translateY(-1px);
-  box-shadow: 0 14px 30px rgba(62, 90, 57, 0.12);
+  box-shadow: 0 14px 30px rgba(112, 63, 26, 0.12);
 }
 
 .day-card-header {
@@ -731,7 +731,7 @@ select:focus {
   align-items: baseline;
   margin-bottom: 16px;
   padding-bottom: 12px;
-  border-bottom: 1px solid rgba(95, 127, 90, 0.14);
+  border-bottom: 1px solid rgba(146, 87, 42, 0.14);
 }
 
 .day-card-subtitle {
@@ -747,7 +747,7 @@ select:focus {
   padding: 14px;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.6);
-  border: 1px solid rgba(95, 127, 90, 0.12);
+  border: 1px solid rgba(146, 87, 42, 0.12);
 }
 
 .meal-slot-header {
@@ -773,12 +773,15 @@ select:focus {
   min-height: 92px;
   padding: 10px;
   border-radius: var(--radius-medium);
-  border: 1px solid rgba(95, 127, 90, 0.15);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(234, 244, 231, 0.56));
+  border: 1px solid rgba(146, 87, 42, 0.15);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.66), rgba(250, 236, 223, 0.58));
 }
 
 .meal-select {
   margin-bottom: 10px;
+  background: linear-gradient(180deg, #fffdf9, #fff4e9);
+  border-color: rgba(204, 132, 76, 0.38);
+  color: #5e3218;
 }
 
 .planned-recipe {
@@ -826,12 +829,12 @@ select:focus {
   padding: 14px 16px;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.86);
-  border: 1px solid rgba(95, 127, 90, 0.12);
+  border: 1px solid rgba(146, 87, 42, 0.12);
 }
 
 .shopping-item-cluster-start {
   margin-top: 10px;
-  box-shadow: inset 0 2px 0 rgba(120, 154, 116, 0.14);
+  box-shadow: inset 0 2px 0 rgba(207, 122, 58, 0.2);
 }
 
 .shopping-item-label {
@@ -937,5 +940,15 @@ select:focus {
 
   .recipe-card-actions {
     justify-content: flex-end;
+  }
+
+  .extra-add-form {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .extra-add-form .secondary-button,
+  .extra-add-form input {
+    width: 100%;
   }
 }
