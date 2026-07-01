@@ -60,33 +60,53 @@ SHOPPING_CATEGORY_KEYWORDS = {
     "gemuese_obst": [
         "tomate",
         "tomaten",
+        "cherrytomaten",
         "zwiebel",
         "knoblauch",
         "paprika",
         "zucchini",
         "karotte",
+        "karotten",
+        "brokkoli",
+        "blumenkohl",
+        "spinat",
+        "pilz",
+        "champignon",
         "gurke",
         "salat",
         "kartoffel",
+        "kartoffeln",
+        "zitrone",
+        "limette",
         "apfel",
         "banane",
+        "beere",
+        "erdbeere",
         "obst",
         "gemuese",
-        "gemuese",
+        "gemüse",
     ],
     "kuehlung": [
         "milch",
         "joghurt",
         "quark",
         "kaese",
+        "käse",
         "feta",
         "butter",
         "sahne",
         "mozzarella",
+        "frischkaese",
+        "frischkäse",
+        "skyr",
+        "kuehl",
+        "kühl",
     ],
     "proteine": [
         "huhn",
         "haehn",
+        "hähn",
+        "pute",
         "rind",
         "fisch",
         "lachs",
@@ -95,12 +115,14 @@ SHOPPING_CATEGORY_KEYWORDS = {
         "eier",
         "bohnen",
         "linsen",
+        "kichererb",
     ],
-    "backwaren": ["brot", "broet", "toast", "wrap", "bröt", "bagel"],
+    "backwaren": ["brot", "broet", "bröt", "brotchen", "brötchen", "toast", "wrap", "bagel"],
     "trockenwaren": [
         "reis",
         "pasta",
         "nudel",
+        "nudeln",
         "hafer",
         "mehl",
         "zucker",
@@ -108,6 +130,9 @@ SHOPPING_CATEGORY_KEYWORDS = {
         "konserve",
         "passata",
         "tomaten in dosen",
+        "couscous",
+        "bulgur",
+        "quinoa",
     ],
     "gewuerze_oele": ["oel", "öl", "essig", "salz", "pfeffer", "gewuerz", "gewürz"],
     "snacks": ["snack", "riegel", "cracker", "schokolade", "nuesse", "nüsse", "chips"],
@@ -212,6 +237,16 @@ def normalize_key(value):
     return " ".join(str(value).strip().lower().split())
 
 
+def shopping_match_text(label):
+    parsed = parse_ingredient(label)
+    if parsed.get("kind") == "scaled":
+        return normalize_key(parsed.get("name", ""))
+
+    # Remove leading count markers like "2 x" before keyword matching.
+    cleaned = re.sub(r"^\s*\d+(?:[.,]\d+)?\s*x\s+", "", str(label), flags=re.IGNORECASE)
+    return normalize_key(cleaned)
+
+
 def infer_shopping_category(label, explicit_category=None):
     if explicit_category == "snacks":
         return "snacks"
@@ -220,7 +255,7 @@ def infer_shopping_category(label, explicit_category=None):
     if explicit_category == "pantry":
         return "vorrat"
 
-    normalized = normalize_key(label)
+    normalized = shopping_match_text(label)
     for category, keywords in SHOPPING_CATEGORY_KEYWORDS.items():
         if any(keyword in normalized for keyword in keywords):
             return category

@@ -218,14 +218,15 @@ async function handleRecipeSubmit(event) {
   const name = recipeNameInput.value.trim();
   const baseServings = Number(recipeServingsInput.value);
   const tags = Array.from(selectedRecipeTags);
-  const ingredients = collectIngredients();
+  const ingredientEntries = collectIngredientEntries();
+  const ingredients = ingredientEntries.map(formatIngredientEntry);
 
-  if (!name || ingredients.length === 0 || baseServings < 1 || tags.length === 0) {
+  if (!name || ingredientEntries.length === 0 || baseServings < 1 || tags.length === 0) {
     updateSyncStatus("Bitte Rezeptname, Personenanzahl, Meal-Labels und Zutaten angeben.");
     return;
   }
 
-  const invalidIngredient = ingredients.find((ingredient) => !hasRequiredIngredientParts(ingredient));
+  const invalidIngredient = ingredientEntries.find((entry) => !hasRequiredIngredientParts(entry));
   if (invalidIngredient) {
     updateSyncStatus("Bitte jede Zutat mit Menge, Einheit und Name angeben (z. B. 2 kg Kartoffeln).");
     return;
@@ -917,25 +918,78 @@ function populateIngredientInputs(ingredients) {
   });
 }
 
-function collectIngredients() {
-  return Array.from(ingredientList.querySelectorAll("input[data-ingredient-input]"))
-    .map((input) => input.value.trim())
-    .filter(Boolean);
+function parseIngredientParts(value) {
+  const text = String(value || "").trim();
+  const match = /^\s*(\d+(?:[.,]\d+)?)\s+([A-Za-zÄÖÜäöüß]+)\s+(.+)\s*$/.exec(text);
+  if (match) {
+    return {
+      amount: match[1],
+      unit: match[2],
+      name: match[3].trim()
+    };
+  }
+
+  return {
+    amount: "",
+    unit: "",
+    name: text
+  };
 }
 
-function hasRequiredIngredientParts(value) {
-  return /^\s*\d+(?:[.,]\d+)?\s+[A-Za-zÄÖÜäöüß]+\s+.+\s*$/.test(value);
+function collectIngredientEntries() {
+  return Array.from(ingredientList.querySelectorAll(".ingredient-row"))
+    .map((row) => {
+      const amountInput = row.querySelector('input[data-ingredient-amount="true"]');
+      const unitInput = row.querySelector('input[data-ingredient-unit="true"]');
+      const nameInput = row.querySelector('input[data-ingredient-name="true"]');
+
+      return {
+        amount: amountInput instanceof HTMLInputElement ? amountInput.value.trim() : "",
+        unit: unitInput instanceof HTMLInputElement ? unitInput.value.trim() : "",
+        name: nameInput instanceof HTMLInputElement ? nameInput.value.trim() : ""
+      };
+    })
+    .filter((entry) => entry.amount || entry.unit || entry.name);
+}
+
+function hasRequiredIngredientParts(entry) {
+  return Boolean(entry.amount) && /^\d+(?:[.,]\d+)?$/.test(entry.amount) && Boolean(entry.unit) && Boolean(entry.name);
+}
+
+function formatIngredientEntry(entry) {
+  return `${entry.amount} ${entry.unit} ${entry.name}`.trim();
 }
 
 function createIngredientRow(value = "") {
   const row = document.createElement("div");
   row.className = "ingredient-row";
 
-  const input = document.createElement("input");
-  input.type = "text";
-  input.placeholder = "z. B. 2 kg Kartoffeln";
-  input.value = value;
-  input.dataset.ingredientInput = "true";
+  const parsed = typeof value === "object" && value !== null
+    ? {
+        amount: String(value.amount || "").trim(),
+        unit: String(value.unit || "").trim(),
+        name: String(value.name || "").trim()
+      }
+    : parseIngredientParts(value);
+
+  const amountInput = document.createElement("input");
+  amountInput.type = "text";
+  amountInput.placeholder = "Menge";
+  amountInput.inputMode = "decimal";
+  amountInput.value = parsed.amount;
+  amountInput.dataset.ingredientAmount = "true";
+
+  const unitInput = document.createElement("input");
+  unitInput.type = "text";
+  unitInput.placeholder = "Einheit";
+  unitInput.value = parsed.unit;
+  unitInput.dataset.ingredientUnit = "true";
+
+  const nameInput = document.createElement("input");
+  nameInput.type = "text";
+  nameInput.placeholder = "Zutat";
+  nameInput.value = parsed.name;
+  nameInput.dataset.ingredientName = "true";
 
   const removeButton = document.createElement("button");
   removeButton.type = "button";
@@ -948,7 +1002,7 @@ function createIngredientRow(value = "") {
     }
   });
 
-  row.append(input, removeButton);
+  row.append(amountInput, unitInput, nameInput, removeButton);
   return row;
 }
 
