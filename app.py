@@ -175,6 +175,18 @@ def build_shopping_list(connection, recipes):
             }
         )
 
+    for row in connection.execute(
+        "SELECT category, item_key, label FROM weekly_options WHERE selected = 1 ORDER BY label ASC"
+    ):
+        weekly_item_id = f"weekly:{row['category']}:{row['item_key']}"
+        items.append(
+            {
+                "id": weekly_item_id,
+                "label": row["label"],
+                "checked": checked_state.get(weekly_item_id, False),
+            }
+        )
+
     items.sort(key=lambda item: normalize_key(item["label"]))
     return items
 
