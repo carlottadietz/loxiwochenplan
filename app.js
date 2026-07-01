@@ -92,8 +92,6 @@ let touchStartX = null;
 let touchStartY = null;
 let pointerStartX = null;
 let pointerStartY = null;
-let touchStartX = null;
-let touchStartY = null;
 
 recipeForm.addEventListener("submit", handleRecipeSubmit);
 resetWeekButton.addEventListener("click", resetWeek);
@@ -170,7 +168,6 @@ navTabs.forEach((tab) => {
     setActivePage(tab.dataset.page || "planner");
   });
 });
-setupPlannerSwipe();
 setupPlannerSwipe();
 
 initialize();
@@ -282,16 +279,17 @@ function renderDaySelector() {
   const selectedIndex = selectedDay === ALL_DAYS_KEY ? -1 : DAYS.indexOf(selectedDay);
 
   DAYS.forEach((day, index) => {
-    const dot = document.createElement("span");
-    dot.className = "day-dot";
-    dot.setAttribute("aria-hidden", "true");
+    const dayLabel = document.createElement("span");
+    dayLabel.className = "day-chip-label";
+    dayLabel.textContent = day;
+    dayLabel.setAttribute("aria-hidden", "true");
     if (index === selectedIndex) {
-      dot.classList.add("is-active");
+      dayLabel.classList.add("is-active");
     }
     if (day === getCurrentDayLabel()) {
-      dot.classList.add("is-today");
+      dayLabel.classList.add("is-today");
     }
-    daySelector.append(dot);
+    daySelector.append(dayLabel);
   });
 }
 
@@ -312,7 +310,7 @@ function updateDayFlowStatus() {
   const dayIndex = DAYS.indexOf(selectedDay);
   const plannedMeals = countPlannedMealsForDay(selectedDay);
   const position = dayIndex >= 0 ? dayIndex + 1 : 1;
-  dayFlowStatus.textContent = `Tag ${position} von ${DAYS.length}`;
+  dayFlowStatus.textContent = `${selectedDay} (${position}/${DAYS.length})`;
   prevDayButton.disabled = dayIndex <= 0;
   nextDayButton.disabled = dayIndex === DAYS.length - 1;
   nextOpenDayButton.disabled = findNextOpenDayIndex(dayIndex) === -1;
@@ -409,44 +407,6 @@ function applySwipeDelta(deltaX, deltaY) {
   }
 
   stepSelectedDay(-1);
-}
-
-function setupPlannerSwipe() {
-  if (!weekBoard) {
-    return;
-  }
-
-  weekBoard.addEventListener("touchstart", (event) => {
-    if (!isPlannerActive() || event.touches.length !== 1) {
-      return;
-    }
-    touchStartX = event.touches[0].clientX;
-    touchStartY = event.touches[0].clientY;
-  }, { passive: true });
-
-  weekBoard.addEventListener("touchend", (event) => {
-    if (!isPlannerActive() || touchStartX === null || touchStartY === null) {
-      return;
-    }
-
-    const touch = event.changedTouches[0];
-    const deltaX = touch.clientX - touchStartX;
-    const deltaY = touch.clientY - touchStartY;
-    touchStartX = null;
-    touchStartY = null;
-
-    // Only react to clear horizontal swipes, not vertical scrolling.
-    if (Math.abs(deltaX) < SWIPE_THRESHOLD_PX || Math.abs(deltaX) <= Math.abs(deltaY)) {
-      return;
-    }
-
-    if (deltaX < 0) {
-      stepSelectedDay(1);
-      return;
-    }
-
-    stepSelectedDay(-1);
-  }, { passive: true });
 }
 
 function jumpToNextOpenDay() {
