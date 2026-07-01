@@ -747,7 +747,6 @@ function renderWeeklyOptions() {
 
 async function toggleWeeklyOption(category, itemId, selected) {
   try {
-    const nextState = await apiFetch("/api/weekly-options", {
     const nextState = await apiFetch(withWeek("/api/weekly-options"), {
       method: "PUT",
       body: JSON.stringify({ category, itemId, selected })
@@ -765,7 +764,6 @@ async function createWeeklyOption(category, label, inputElement) {
   }
 
   try {
-    const nextState = await apiFetch("/api/weekly-options", {
     const nextState = await apiFetch(withWeek("/api/weekly-options"), {
       method: "POST",
       body: JSON.stringify({ category, label })
@@ -783,7 +781,6 @@ async function createWeeklyOption(category, label, inputElement) {
 
 async function deleteWeeklyOption(category, itemId) {
   try {
-    const nextState = await apiFetch("/api/weekly-options", {
     const nextState = await apiFetch(withWeek("/api/weekly-options"), {
       method: "DELETE",
       body: JSON.stringify({ category, itemId })
