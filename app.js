@@ -73,6 +73,7 @@ const showAllDaysButton = document.querySelector("#show-all-days");
 const dayProgressFill = document.querySelector("#day-progress-fill");
 const dayProgressText = document.querySelector("#day-progress-text");
 const weeklyAddForms = Array.from(document.querySelectorAll(".extra-add-form"));
+const plannerPage = document.querySelector("#planner-page");
 const recipeLibrary = document.querySelector("#recipe-library");
 const weekBoard = document.querySelector("#week-board");
 const shoppingList = document.querySelector("#shopping-list");
@@ -92,6 +93,7 @@ let touchStartX = null;
 let touchStartY = null;
 let pointerStartX = null;
 let pointerStartY = null;
+let swipeGestureConsumed = false;
 
 recipeForm.addEventListener("submit", handleRecipeSubmit);
 resetWeekButton.addEventListener("click", resetWeek);
@@ -345,54 +347,94 @@ function stepSelectedDay(direction) {
 }
 
 function setupPlannerSwipe() {
-  if (!weekBoard) {
+  const swipeSurface = plannerPage || weekBoard;
+  if (!swipeSurface) {
     return;
   }
 
-  weekBoard.addEventListener("touchstart", (event) => {
+  swipeSurface.addEventListener("touchstart", (event) => {
     if (!isPlannerActive() || event.touches.length !== 1) {
       return;
     }
+    swipeGestureConsumed = false;
     touchStartX = event.touches[0].clientX;
     touchStartY = event.touches[0].clientY;
   }, { passive: true });
 
-  weekBoard.addEventListener("touchend", (event) => {
-    if (!isPlannerActive() || touchStartX === null || touchStartY === null) {
+  swipeSurface.addEventListener("touchmove", (event) => {
+    if (!isPlannerActive() || swipeGestureConsumed || touchStartX === null || touchStartY === null || event.touches.length !== 1) {
       return;
     }
 
-    const touch = event.changedTouches[0];
+    const touch = event.touches[0];
     const deltaX = touch.clientX - touchStartX;
     const deltaY = touch.clientY - touchStartY;
-    touchStartX = null;
-    touchStartY = null;
-    applySwipeDelta(deltaX, deltaY);
+
+    if (Math.abs(deltaX) >= SWIPE_THRESHOLD_PX && Math.abs(deltaX) > Math.abs(deltaY)) {
+      applySwipeDelta(deltaX, deltaY);
+      swipeGestureConsumed = true;
+    }
   }, { passive: true });
 
-  weekBoard.addEventListener("pointerdown", (event) => {
+  swipeSurface.addEventListener("touchend", () => {
+    touchStartX = null;
+    touchStartY = null;
+    swipeGestureConsumed = false;
+  }, { passive: true });
+
+  swipeSurface.addEventListener("pointerdown", (event) => {
     if (!isPlannerActive() || event.pointerType === "touch") {
       return;
     }
+    swipeGestureConsumed = false;
     pointerStartX = event.clientX;
     pointerStartY = event.clientY;
   });
 
-  weekBoard.addEventListener("pointerup", (event) => {
-    if (!isPlannerActive() || pointerStartX === null || pointerStartY === null || event.pointerType === "touch") {
+  swipeSurface.addEventListener("pointermove", (event) => {
+    if (
+      !isPlannerActive()
+      || swipeGestureConsumed
+      || pointerStartX === null
+      || pointerStartY === null
+      || event.pointerType === "touch"
+    ) {
       return;
     }
+
     const deltaX = event.clientX - pointerStartX;
     const deltaY = event.clientY - pointerStartY;
-    pointerStartX = null;
-    pointerStartY = null;
-    applySwipeDelta(deltaX, deltaY);
+    if (Math.abs(deltaX) >= SWIPE_THRESHOLD_PX && Math.abs(deltaX) > Math.abs(deltaY)) {
+      applySwipeDelta(deltaX, deltaY);
+      swipeGestureConsumed = true;
+      pointerStartX = null;
+      pointerStartY = null;
+    }
   });
 
-  weekBoard.addEventListener("pointercancel", () => {
+  swipeSurface.addEventListener("pointerup", () => {
     pointerStartX = null;
     pointerStartY = null;
+    swipeGestureConsumed = false;
   });
+
+  swipeSurface.addEventListener("pointercancel", () => {
+    pointerStartX = null;
+    pointerStartY = null;
+    swipeGestureConsumed = false;
+  });
+
+  swipeSurface.addEventListener("touchcancel", () => {
+    if (!isPlannerActive() || touchStartX === null || touchStartY === null) {
+      touchStartX = null;
+      touchStartY = null;
+      swipeGestureConsumed = false;
+      return;
+    }
+    touchStartX = null;
+    touchStartY = null;
+    swipeGestureConsumed = false;
+  }, { passive: true });
 }
 
 function applySwipeDelta(deltaX, deltaY) {

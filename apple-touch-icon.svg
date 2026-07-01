@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" role="img" aria-label="Einkaufstasche Icon">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fff8f1"/>
+      <stop offset="100%" stop-color="#f2e6d8"/>
+    </linearGradient>
+    <linearGradient id="bag" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#b35a31"/>
+      <stop offset="100%" stop-color="#8e4322"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="8" y="8" width="164" height="164" rx="36" fill="url(#bg)"/>
+  <rect x="8" y="8" width="164" height="164" rx="36" fill="none" stroke="#d8c2ab" stroke-width="2"/>
+
+  <path d="M58 72h64c6 0 10 4 10 10l-7 55c-1 8-6 12-13 12H68c-7 0-12-4-13-12l-7-55c0-6 4-10 10-10z" fill="url(#bag)"/>
+  <path d="M63 72c0-15 12-27 27-27s27 12 27 27" fill="none" stroke="#8e4322" stroke-width="10" stroke-linecap="round"/>
+  <path d="M69 72c0-11 9-20 21-20s21 9 21 20" fill="none" stroke="#f0d7c2" stroke-width="6" stroke-linecap="round"/>
+
+  <circle cx="90" cy="108" r="10" fill="#f0d7c2"/>
+  <rect x="85" y="94" width="10" height="28" rx="5" fill="#f0d7c2"/>
+</svg>
