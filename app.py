@@ -609,6 +609,35 @@ def create_weekly_option():
     return jsonify(serialize_state())
 
 
+@app.delete("/api/weekly-options")
+def delete_weekly_option():
+    payload = request.get_json(silent=True) or {}
+    category = str(payload.get("category", "")).strip()
+    item_id = str(payload.get("itemId", "")).strip()
+
+    if category not in WEEKLY_OPTION_GROUPS or not item_id:
+        return jsonify({"error": "Ungueltige Wochenauswahl."}), 400
+
+    with get_connection() as connection:
+        row = connection.execute(
+            "SELECT item_key FROM weekly_options WHERE category = ? AND item_key = ?",
+            (category, item_id),
+        ).fetchone()
+        if row is None:
+            return jsonify({"error": "Auswahl nicht gefunden."}), 404
+
+        connection.execute(
+            "DELETE FROM weekly_options WHERE category = ? AND item_key = ?",
+            (category, item_id),
+        )
+        connection.execute(
+            "DELETE FROM shopping_state WHERE item_key = ?",
+            (f"weekly:{category}:{item_id}",),
+        )
+
+    return jsonify(serialize_state())
+
+
 @app.get("/")
 def index():
     return send_from_directory(BASE_DIR, "index.html")

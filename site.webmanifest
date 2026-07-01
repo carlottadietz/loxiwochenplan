@@ -1,11 +1,11 @@
 {
   "name": "Loxi Wochenplan",
   "short_name": "Wochenplan",
-  "description": "Wochenplaner fuer Rezepte und Einkaufsliste.",
+  "description": "Wochenplaner für Rezepte und Einkaufsliste.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f7f1e8",
-  "theme_color": "#a14f2a",
+  "background_color": "#edf4eb",
+  "theme_color": "#6f8f6b",
   "icons": [
     {
       "src": "/icon-192.png",

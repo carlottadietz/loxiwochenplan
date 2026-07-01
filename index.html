@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#a14f2a">
+  <meta name="theme-color" content="#6f8f6b">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Loxi Wochenplan">
@@ -21,7 +21,7 @@
   <div class="page-shell">
     <header class="hero">
       <div class="hero-content">
-        <h1>Wochenplanung fuer dein Essen</h1>
+        <h1>Wochenplanung für dein Essen</h1>
         <p class="hero-copy">
           Plane deine Woche in einer klaren Wochenansicht, verwalte deine Rezeptbibliothek separat
           und lege neue Rezepte in einem schnellen Pop-up an.
@@ -50,17 +50,17 @@
               <p class="section-kicker">Planung</p>
               <h2>Deine Woche</h2>
             </div>
-            <p class="drop-hint">Rezept pro Mahlzeit auswaehlen und Personenzahl anpassen.</p>
+            <p class="drop-hint">Rezept pro Mahlzeit auswählen und Personenzahl anpassen.</p>
           </div>
           <div class="planner-toolbar">
-            <div class="week-flow-controls" aria-label="Wochenfuehrung">
+            <div class="week-flow-controls" aria-label="Wochenführung">
               <div class="flow-primary-actions">
-                <button id="prev-day" class="secondary-button" type="button">Tag zurueck</button>
-                <button id="next-day" class="secondary-button" type="button">Naechster Tag</button>
+                <button id="prev-day" class="secondary-button" type="button">Tag zurück</button>
+                <button id="next-day" class="secondary-button" type="button">Nächster Tag</button>
               </div>
               <p id="day-flow-status" class="day-flow-status">Tag 1 von 7</p>
               <div class="flow-secondary-actions">
-                <button id="next-open-day" class="ghost-button" type="button">Naechster offener Tag</button>
+                <button id="next-open-day" class="ghost-button" type="button">Nächster offener Tag</button>
                 <button id="go-today" class="ghost-button" type="button">Heute</button>
                 <button id="show-all-days" class="ghost-button" type="button">Alle Tage</button>
               </div>
@@ -69,18 +69,18 @@
               <div id="day-progress-fill" class="day-progress-fill"></div>
             </div>
             <p id="day-progress-text" class="day-progress-text">0 von 3 Mahlzeiten geplant</p>
-            <p class="day-nav-hint">Tipp: Waehle den Tag direkt in der Leiste aus.</p>
-            <div id="day-selector" class="day-selector" aria-label="Tag auswaehlen"></div>
+            <p class="day-nav-hint">Tipp: Wähle den Tag direkt in der Leiste aus.</p>
+            <div id="day-selector" class="day-selector" aria-label="Tag auswählen"></div>
           </div>
           <div id="week-board" class="week-board"></div>
 
-          <section class="weekly-extras" aria-label="Wochenzusaetze">
+          <section class="weekly-extras" aria-label="Wochenzusätze">
             <div class="panel-header panel-header-wide">
               <div>
-                <p class="section-kicker">Wochenzusaetze</p>
+                <p class="section-kicker">Wochenzusätze</p>
                 <h2>Snacks, Haushalt und Vorrat</h2>
               </div>
-              <p class="drop-hint">Einfach anklicken, wird fuer alle gespeichert.</p>
+              <p class="drop-hint">Einfach anklicken, wird für alle gespeichert.</p>
             </div>
 
             <div class="extras-grid">
@@ -88,9 +88,9 @@
                 <h3>Snacks</h3>
                 <div id="snack-options" class="extra-option-list"></div>
                 <form class="extra-add-form" data-category="snacks">
-                  <input id="snack-input" list="snack-suggestions" type="text" placeholder="Snack hinzufuegen">
+                  <input id="snack-input" list="snack-suggestions" type="text" placeholder="Snack hinzufügen">
                   <datalist id="snack-suggestions"></datalist>
-                  <button class="secondary-button" type="submit">Hinzufuegen</button>
+                  <button class="secondary-button" type="submit">Hinzufügen</button>
                 </form>
               </article>
 
@@ -98,9 +98,9 @@
                 <h3>Putzmittel</h3>
                 <div id="household-options" class="extra-option-list"></div>
                 <form class="extra-add-form" data-category="household">
-                  <input id="household-input" list="household-suggestions" type="text" placeholder="Putzmittel hinzufuegen">
+                  <input id="household-input" list="household-suggestions" type="text" placeholder="Putzmittel hinzufügen">
                   <datalist id="household-suggestions"></datalist>
-                  <button class="secondary-button" type="submit">Hinzufuegen</button>
+                  <button class="secondary-button" type="submit">Hinzufügen</button>
                 </form>
               </article>
 
@@ -108,9 +108,9 @@
                 <h3>Vorratsschrank</h3>
                 <div id="pantry-options" class="extra-option-list"></div>
                 <form class="extra-add-form" data-category="pantry">
-                  <input id="pantry-input" list="pantry-suggestions" type="text" placeholder="Vorrat hinzufuegen">
+                  <input id="pantry-input" list="pantry-suggestions" type="text" placeholder="Vorrat hinzufügen">
                   <datalist id="pantry-suggestions"></datalist>
-                  <button class="secondary-button" type="submit">Hinzufuegen</button>
+                  <button class="secondary-button" type="submit">Hinzufügen</button>
                 </form>
               </article>
             </div>
@@ -154,13 +154,13 @@
           <p class="section-kicker">Rezepte</p>
           <h2 id="recipe-modal-title">Neues Rezept anlegen</h2>
         </div>
-        <button id="close-recipe-modal" class="ghost-button" type="button">Schliessen</button>
+        <button id="close-recipe-modal" class="ghost-button" type="button">Schließen</button>
       </div>
 
       <form id="recipe-form" class="recipe-form">
         <label>
           Rezeptname
-          <input id="recipe-name" name="name" type="text" placeholder="Zum Beispiel Gemueselasagne" required>
+          <input id="recipe-name" name="name" type="text" placeholder="Zum Beispiel Gemüselasagne" required>
         </label>
 
         <label>
@@ -169,9 +169,9 @@
         </label>
 
         <fieldset class="recipe-tags-fieldset">
-          <legend>Passend fuer</legend>
+          <legend>Passend für</legend>
           <div id="recipe-tag-buttons" class="recipe-tag-buttons" role="group" aria-label="Meal Labels">
-            <button type="button" class="tag-toggle" data-tag="Fruehstueck">Fruehstueck</button>
+            <button type="button" class="tag-toggle" data-tag="Fruehstueck">Frühstück</button>
             <button type="button" class="tag-toggle is-active" data-tag="Mittag">Mittag</button>
             <button type="button" class="tag-toggle is-active" data-tag="Abendessen">Abendessen</button>
           </div>
@@ -180,7 +180,7 @@
         <fieldset class="ingredient-fieldset">
           <legend>Zutaten einzeln anlegen</legend>
           <div id="ingredient-list" class="ingredient-list"></div>
-          <button id="add-ingredient-button" class="secondary-button" type="button">+ Zutat hinzufuegen</button>
+          <button id="add-ingredient-button" class="secondary-button" type="button">+ Zutat hinzufügen</button>
         </fieldset>
 
         <button id="recipe-submit-button" class="primary-button" type="submit">Rezept speichern</button>
@@ -198,7 +198,7 @@
       </div>
       <div class="recipe-card-actions">
         <button class="ghost-button edit-recipe" type="button">Bearbeiten</button>
-        <button class="ghost-button delete-recipe" type="button">Loeschen</button>
+        <button class="ghost-button delete-recipe" type="button">Löschen</button>
       </div>
     </article>
   </template>

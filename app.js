@@ -31,6 +31,13 @@ function getCurrentDayLabel() {
   return DAYS[dayIndex] || DAYS[0];
 }
 
+function displayMealLabel(meal) {
+  if (meal === "Fruehstueck") {
+    return "Frühstück";
+  }
+  return meal;
+}
+
 function createEmptyWeekPlan() {
   return Object.fromEntries(
     DAYS.map((day) => [
@@ -179,7 +186,7 @@ async function initialize() {
     replaceState(nextState);
     updateSyncStatus("Gemeinsamer Plan ist synchronisiert.");
   } catch {
-    updateSyncStatus("Server nicht erreichbar. Bitte spaeter erneut laden.");
+    updateSyncStatus("Server nicht erreichbar. Bitte später erneut laden.");
   }
 
   render();
@@ -226,7 +233,7 @@ async function handleRecipeSubmit(event) {
     resetRecipeForm();
     closeRecipeModal();
     setActivePage("library");
-    updateSyncStatus(isEdit ? "Rezept wurde aktualisiert." : "Rezept fuer alle gespeichert.");
+    updateSyncStatus(isEdit ? "Rezept wurde aktualisiert." : "Rezept für alle gespeichert.");
     render();
   } catch {
     updateSyncStatus("Rezept konnte nicht gespeichert werden.");
@@ -237,7 +244,7 @@ async function resetWeek() {
   try {
     const nextState = await apiFetch("/api/week-plan/reset", { method: "POST" });
     replaceState(nextState);
-    updateSyncStatus("Woche fuer alle geleert.");
+    updateSyncStatus("Woche für alle geleert.");
     render();
   } catch {
     updateSyncStatus("Woche konnte nicht geleert werden.");
@@ -257,7 +264,7 @@ async function copyShoppingList() {
       copyShoppingListButton.textContent = "Liste kopieren";
     }, 1600);
   } catch {
-    copyShoppingListButton.textContent = "Kopieren nicht moeglich";
+    copyShoppingListButton.textContent = "Kopieren nicht möglich";
   }
 }
 
@@ -300,7 +307,7 @@ function updateDayFlowStatus() {
   const totalMeals = DAYS.length * MEALS.length;
 
   if (selectedDay === ALL_DAYS_KEY) {
-    dayFlowStatus.textContent = `Alle Tage im Ueberblick (${totalPlannedMeals}/${totalMeals} Mahlzeiten geplant)`;
+    dayFlowStatus.textContent = `Alle Tage im Überblick (${totalPlannedMeals}/${totalMeals} Mahlzeiten geplant)`;
     prevDayButton.disabled = false;
     nextDayButton.disabled = false;
     nextOpenDayButton.disabled = totalPlannedMeals >= totalMeals;
@@ -350,7 +357,7 @@ function jumpToNextOpenDay() {
   const startIndex = selectedDay === ALL_DAYS_KEY ? -1 : DAYS.indexOf(selectedDay);
   const nextOpenIndex = findNextOpenDayIndex(startIndex);
   if (nextOpenIndex === -1) {
-    updateSyncStatus("Alle Tage sind vollstaendig geplant.");
+    updateSyncStatus("Alle Tage sind vollständig geplant.");
     return;
   }
 
@@ -397,13 +404,13 @@ function renderRecipeLibrary() {
     const card = recipeCardTemplate.content.firstElementChild.cloneNode(true);
     card.dataset.recipeId = recipe.id;
     card.querySelector("h3").textContent = recipe.name;
-    card.querySelector(".recipe-servings").textContent = `Basis fuer ${recipe.baseServings} Personen`;
+    card.querySelector(".recipe-servings").textContent = `Basis für ${recipe.baseServings} Personen`;
     const tagsContainer = card.querySelector(".recipe-tags");
     const recipeTags = Array.isArray(recipe.tags) && recipe.tags.length > 0 ? recipe.tags : MEALS;
     recipeTags.forEach((tag) => {
       const tagElement = document.createElement("span");
       tagElement.className = "recipe-tag";
-      tagElement.textContent = tag;
+      tagElement.textContent = displayMealLabel(tag);
       tagsContainer.append(tagElement);
     });
     card.querySelector(".ingredient-preview").textContent = recipe.ingredients.join(" • ");
@@ -449,10 +456,10 @@ function createMealSlot(day, meal) {
   const heading = document.createElement("div");
   heading.className = "meal-slot-header";
   const title = document.createElement("h4");
-  title.textContent = meal;
+  title.textContent = displayMealLabel(meal);
   const subtitle = document.createElement("span");
   subtitle.className = "day-subtitle";
-  subtitle.textContent = "Rezept auswaehlen";
+  subtitle.textContent = "Rezept auswählen";
   heading.append(title, subtitle);
 
   const slotBody = document.createElement("div");
@@ -504,10 +511,10 @@ function createMealSlot(day, meal) {
         })
       });
       replaceState(nextState);
-      updateSyncStatus(nextRecipeId ? `${day} ${meal} gespeichert.` : `${day} ${meal} geleert.`);
+      updateSyncStatus(nextRecipeId ? `${day} ${displayMealLabel(meal)} gespeichert.` : `${day} ${displayMealLabel(meal)} geleert.`);
       render();
     } catch {
-      updateSyncStatus(`${day} ${meal} konnte nicht gespeichert werden.`);
+      updateSyncStatus(`${day} ${displayMealLabel(meal)} konnte nicht gespeichert werden.`);
     }
   });
 
@@ -582,10 +589,10 @@ function createPlannedRecipeCard(day, meal, recipe, servings) {
         body: JSON.stringify({ day, meal, recipeId: null, servings: null })
       });
       replaceState(nextState);
-      updateSyncStatus(`${day} ${meal} wurde geleert.`);
+      updateSyncStatus(`${day} ${displayMealLabel(meal)} wurde geleert.`);
       render();
     } catch {
-      updateSyncStatus(`${day} ${meal} konnte nicht aktualisiert werden.`);
+      updateSyncStatus(`${day} ${displayMealLabel(meal)} konnte nicht aktualisiert werden.`);
     }
   });
 
@@ -605,7 +612,7 @@ async function updatePlannedServings(day, meal, recipeId, servings) {
       body: JSON.stringify({ day, meal, recipeId, servings })
     });
     replaceState(nextState);
-    updateSyncStatus(`${day} ${meal} auf ${servings} Personen gesetzt.`);
+    updateSyncStatus(`${day} ${displayMealLabel(meal)} auf ${servings} Personen gesetzt.`);
     render();
   } catch {
     updateSyncStatus("Personenzahl konnte nicht aktualisiert werden.");
@@ -687,8 +694,11 @@ function renderWeeklyOptions() {
     }
 
     options.forEach((option) => {
+      const itemRow = document.createElement("div");
+      itemRow.className = "extra-option-item";
+
       const itemLabel = document.createElement("label");
-      itemLabel.className = "extra-option-item";
+      itemLabel.className = "extra-option-label";
 
       const checkbox = document.createElement("input");
       checkbox.type = "checkbox";
@@ -701,7 +711,17 @@ function renderWeeklyOptions() {
       text.textContent = option.label;
 
       itemLabel.append(checkbox, text);
-      container.append(itemLabel);
+
+      const deleteButton = document.createElement("button");
+      deleteButton.type = "button";
+      deleteButton.className = "extra-remove-button";
+      deleteButton.textContent = "Löschen";
+      deleteButton.addEventListener("click", () => {
+        deleteWeeklyOption(category.key, option.id);
+      });
+
+      itemRow.append(itemLabel, deleteButton);
+      container.append(itemRow);
     });
   });
 }
@@ -734,9 +754,23 @@ async function createWeeklyOption(category, label, inputElement) {
     if (inputElement instanceof HTMLInputElement) {
       inputElement.value = "";
     }
-    updateSyncStatus(`${label} wurde gespeichert und ausgewaehlt.`);
+    updateSyncStatus(`${label} wurde gespeichert und ausgewählt.`);
   } catch {
     updateSyncStatus("Neuer Wochenzusatz konnte nicht gespeichert werden.");
+  }
+}
+
+async function deleteWeeklyOption(category, itemId) {
+  try {
+    const nextState = await apiFetch("/api/weekly-options", {
+      method: "DELETE",
+      body: JSON.stringify({ category, itemId })
+    });
+    replaceState(nextState);
+    renderWeeklyOptions();
+    updateSyncStatus("Wochenzusatz wurde gelöscht.");
+  } catch {
+    updateSyncStatus("Wochenzusatz konnte nicht gelöscht werden.");
   }
 }
 
@@ -744,10 +778,10 @@ async function deleteRecipe(recipeId) {
   try {
     const nextState = await apiFetch(`/api/recipes/${recipeId}`, { method: "DELETE" });
     replaceState(nextState);
-    updateSyncStatus("Rezept fuer alle geloescht.");
+    updateSyncStatus("Rezept für alle gelöscht.");
     render();
   } catch {
-    updateSyncStatus("Rezept konnte nicht geloescht werden.");
+    updateSyncStatus("Rezept konnte nicht gelöscht werden.");
   }
 }
 
@@ -795,7 +829,7 @@ function openRecipeModal(options = {}) {
   if (recipe) {
     editingRecipeId = recipe.id;
     recipeModalTitle.textContent = "Rezept bearbeiten";
-    recipeSubmitButton.textContent = "Aenderungen speichern";
+    recipeSubmitButton.textContent = "Änderungen speichern";
     recipeNameInput.value = recipe.name;
     recipeServingsInput.value = recipe.baseServings;
     selectedRecipeTags = new Set(Array.isArray(recipe.tags) ? recipe.tags : []);
