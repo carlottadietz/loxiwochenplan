@@ -3,17 +3,17 @@
   --bg: #edf4eb;
   --bg-strong: linear-gradient(165deg, #f7fbf6 0%, #edf4eb 45%, #e6efe3 100%);
   --panel: rgba(248, 252, 247, 0.92);
-  --panel-border: rgba(89, 117, 83, 0.16);
+  --panel-border: rgba(95, 127, 90, 0.16);
   --text: #243221;
   --muted: #52664d;
-  --accent: #6f8f6b;
-  --accent-dark: #4e684a;
-  --accent-soft: #e2ebdf;
-  --accent-alt: #6f8f6b;
+  --accent: #789a74;
+  --accent-dark: #4f6f4d;
+  --accent-soft: #e4eee1;
+  --accent-alt: #789a74;
   --bubble-peach: #dbe7d8;
   --bubble-mint: #e7f0e4;
   --bubble-sand: #d9e5d5;
-  --shadow: 0 18px 44px rgba(57, 84, 52, 0.12);
+  --shadow: 0 18px 44px rgba(62, 90, 57, 0.12);
   --radius-large: 28px;
   --radius-medium: 20px;
   --radius-small: 14px;
@@ -29,9 +29,9 @@ body {
   font-family: "Manrope", sans-serif;
   color: var(--text);
   background:
-    radial-gradient(circle at 11% -8%, rgba(111, 143, 107, 0.2), transparent 35%),
-    radial-gradient(circle at 88% 2%, rgba(223, 236, 219, 0.48), transparent 30%),
-    radial-gradient(circle at 20% 89%, rgba(212, 228, 206, 0.45), transparent 33%),
+    radial-gradient(circle at 11% -8%, rgba(120, 154, 116, 0.22), transparent 35%),
+    radial-gradient(circle at 88% 2%, rgba(227, 238, 223, 0.5), transparent 30%),
+    radial-gradient(circle at 20% 89%, rgba(214, 230, 209, 0.45), transparent 33%),
     var(--bg-strong);
 }
 
@@ -49,7 +49,7 @@ body::before {
   top: 20vh;
   right: -90px;
   border-radius: 41% 59% 64% 36%;
-  background: linear-gradient(135deg, rgba(215, 232, 209, 0.66), rgba(255, 255, 255, 0));
+  background: linear-gradient(135deg, rgba(219, 234, 214, 0.66), rgba(255, 255, 255, 0));
 }
 
 body::after {
@@ -58,7 +58,7 @@ body::after {
   left: -70px;
   bottom: 8vh;
   border-radius: 57% 43% 50% 50%;
-  background: linear-gradient(135deg, rgba(223, 236, 219, 0.6), rgba(255, 255, 255, 0));
+  background: linear-gradient(135deg, rgba(227, 238, 223, 0.62), rgba(255, 255, 255, 0));
 }
 
 button,
@@ -86,10 +86,10 @@ select {
   padding: 24px;
   border-radius: var(--radius-large);
   background:
-    radial-gradient(circle at 9% 14%, rgba(223, 236, 219, 0.56), transparent 35%),
-    radial-gradient(circle at 84% 16%, rgba(212, 228, 206, 0.56), transparent 32%),
+    radial-gradient(circle at 9% 14%, rgba(227, 238, 223, 0.56), transparent 35%),
+    radial-gradient(circle at 84% 16%, rgba(214, 230, 209, 0.56), transparent 32%),
     linear-gradient(115deg, rgba(250, 253, 249, 0.98), rgba(238, 246, 235, 0.92));
-  border: 1px solid rgba(89, 117, 83, 0.13);
+  border: 1px solid rgba(95, 127, 90, 0.13);
   box-shadow: var(--shadow);
 }
 
@@ -186,8 +186,8 @@ h2 {
   width: min(100%, 520px);
   height: 10px;
   border-radius: 999px;
-  border: 1px solid rgba(78, 104, 74, 0.2);
-  background: linear-gradient(90deg, rgba(111, 143, 107, 0.9), rgba(150, 179, 143, 0.55), rgba(111, 143, 107, 0));
+  border: 1px solid rgba(79, 111, 76, 0.2);
+  background: linear-gradient(90deg, rgba(120, 154, 116, 0.92), rgba(167, 193, 160, 0.56), rgba(120, 154, 116, 0));
   position: relative;
   overflow: hidden;
 }
@@ -208,7 +208,7 @@ h2 {
   padding: 10px;
   border-radius: var(--radius-large);
   background: rgba(250, 253, 249, 0.9);
-  border: 1px solid rgba(89, 117, 83, 0.12);
+  border: 1px solid rgba(95, 127, 90, 0.12);
   box-shadow: var(--shadow);
   backdrop-filter: blur(8px);
 }
@@ -224,9 +224,9 @@ h2 {
 }
 
 .nav-tab.is-active {
-  background: linear-gradient(135deg, var(--accent), #8faf8a);
+  background: linear-gradient(135deg, var(--accent), #a5c2a2);
   color: #fffaf7;
-  box-shadow: 0 8px 18px rgba(78, 104, 74, 0.2);
+  box-shadow: 0 8px 18px rgba(79, 111, 76, 0.2);
 }
 
 .page-view {
@@ -258,13 +258,35 @@ h2 {
   margin: -4px 0 18px;
 }
 
+.week-select-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.week-picker-label {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.week-picker {
+  width: auto;
+  min-width: 170px;
+  padding: 9px 12px;
+  border-radius: 999px;
+}
+
 .week-flow-controls {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 10px 12px;
   border-radius: 999px;
-  border: 1px solid rgba(78, 104, 74, 0.2);
+  border: 1px solid rgba(79, 111, 76, 0.2);
   background: rgba(248, 252, 247, 0.9);
 }
 
@@ -287,7 +309,7 @@ h2 {
 .day-progress {
   height: 8px;
   border-radius: 999px;
-  background: rgba(111, 143, 107, 0.22);
+  background: rgba(120, 154, 116, 0.24);
   overflow: hidden;
   margin: 10px 0 8px;
 }
@@ -296,7 +318,7 @@ h2 {
   width: 0;
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #6f8f6b, #9ab596, #6f8f6b);
+  background: linear-gradient(90deg, #789a74, #b2c9ae, #789a74);
   transition: width 180ms ease;
 }
 
@@ -345,7 +367,7 @@ h2 {
 }
 
 .day-chip.is-active {
-  background: linear-gradient(135deg, #6f8f6b, #8faf8a);
+  background: linear-gradient(135deg, #789a74, #a5c2a2);
   color: #fffaf7;
   border-color: transparent;
 }
@@ -430,7 +452,7 @@ h2 {
 }
 
 .tag-toggle {
-  border: 1px solid rgba(89, 117, 83, 0.22);
+  border: 1px solid rgba(95, 127, 90, 0.22);
   border-radius: 999px;
   padding: 10px 14px;
   background: rgba(255, 255, 255, 0.92);
@@ -442,11 +464,11 @@ h2 {
 
 .tag-toggle:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 12px rgba(78, 104, 74, 0.14);
+  box-shadow: 0 6px 12px rgba(79, 111, 76, 0.14);
 }
 
 .tag-toggle.is-active {
-  background: linear-gradient(135deg, var(--accent), #8faf8a);
+  background: linear-gradient(135deg, var(--accent), #a5c2a2);
   color: #ffffff;
   border-color: transparent;
 }
@@ -471,7 +493,7 @@ input,
 textarea,
 select {
   width: 100%;
-  border: 1px solid rgba(89, 117, 83, 0.24);
+  border: 1px solid rgba(95, 127, 90, 0.24);
   border-radius: var(--radius-small);
   padding: 14px 16px;
   background: rgba(255, 255, 255, 0.9);
@@ -481,7 +503,7 @@ select {
 input:focus,
 textarea:focus,
 select:focus {
-  outline: 2px solid rgba(111, 143, 107, 0.25);
+  outline: 2px solid rgba(120, 154, 116, 0.25);
   border-color: var(--accent);
 }
 
@@ -496,15 +518,15 @@ select:focus {
 }
 
 .primary-button {
-  background: linear-gradient(135deg, #6f8f6b, #4e684a);
+  background: linear-gradient(135deg, #789a74, #4f6f4d);
   color: #fffaf7;
-  box-shadow: 0 10px 24px rgba(78, 104, 74, 0.22);
+  box-shadow: 0 10px 24px rgba(79, 111, 76, 0.22);
 }
 
 .secondary-button {
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(236, 246, 233, 0.8));
   color: var(--text);
-  border: 1px solid rgba(89, 117, 83, 0.2);
+  border: 1px solid rgba(95, 127, 90, 0.2);
 }
 
 .ghost-button {
@@ -535,7 +557,7 @@ select:focus {
   align-items: flex-start;
   padding: 16px;
   border-radius: 18px;
-  border: 1px solid rgba(89, 117, 83, 0.16);
+  border: 1px solid rgba(95, 127, 90, 0.16);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(238, 246, 235, 0.9));
 }
 
@@ -546,7 +568,7 @@ select:focus {
 
 .recipe-card:hover {
   transform: translateY(-1px);
-  box-shadow: 0 12px 24px rgba(57, 84, 52, 0.1);
+  box-shadow: 0 12px 24px rgba(62, 90, 57, 0.1);
 }
 
 .recipe-card-actions {
@@ -575,7 +597,7 @@ select:focus {
 .recipe-tag {
   padding: 6px 10px;
   border-radius: 999px;
-  background: rgba(111, 143, 107, 0.14);
+  background: rgba(120, 154, 116, 0.14);
   color: var(--accent-dark);
   font-size: 0.88rem;
   font-weight: 700;
@@ -594,7 +616,7 @@ select:focus {
 .weekly-extras {
   margin-top: 24px;
   padding-top: 20px;
-  border-top: 1px solid rgba(89, 117, 83, 0.14);
+  border-top: 1px solid rgba(95, 127, 90, 0.14);
 }
 
 .extras-grid {
@@ -606,7 +628,7 @@ select:focus {
 .extra-group {
   padding: 14px;
   border-radius: 18px;
-  border: 1px solid rgba(89, 117, 83, 0.14);
+  border: 1px solid rgba(95, 127, 90, 0.14);
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(231, 242, 228, 0.8));
 }
 
@@ -638,7 +660,7 @@ select:focus {
   justify-content: space-between;
   gap: 12px;
   padding: 10px 12px;
-  border: 1px solid rgba(89, 117, 83, 0.18);
+  border: 1px solid rgba(95, 127, 90, 0.18);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.9);
   font-weight: 600;
@@ -655,8 +677,8 @@ select:focus {
 
 .extra-option-item:hover {
   transform: translateY(-1px);
-  border-color: rgba(111, 143, 107, 0.42);
-  box-shadow: 0 6px 14px rgba(78, 104, 74, 0.1);
+  border-color: rgba(120, 154, 116, 0.42);
+  box-shadow: 0 6px 14px rgba(79, 111, 76, 0.1);
 }
 
 .extra-option-item input {
@@ -665,7 +687,7 @@ select:focus {
 }
 
 .extra-remove-button {
-  border: 1px solid rgba(89, 117, 83, 0.26);
+  border: 1px solid rgba(95, 127, 90, 0.26);
   border-radius: 999px;
   padding: 4px 10px;
   background: rgba(255, 255, 255, 0.95);
@@ -691,15 +713,15 @@ select:focus {
   border-radius: 22px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(238, 246, 235, 0.96)),
-    linear-gradient(135deg, rgba(111, 143, 107, 0.1), rgba(255, 255, 255, 0));
-  border: 1px solid rgba(89, 117, 83, 0.16);
-  box-shadow: 0 12px 30px rgba(57, 84, 52, 0.1);
+    linear-gradient(135deg, rgba(120, 154, 116, 0.1), rgba(255, 255, 255, 0));
+  border: 1px solid rgba(95, 127, 90, 0.16);
+  box-shadow: 0 12px 30px rgba(62, 90, 57, 0.1);
   transition: transform 160ms ease, box-shadow 160ms ease;
 }
 
 .day-card:hover {
   transform: translateY(-1px);
-  box-shadow: 0 14px 30px rgba(57, 84, 52, 0.12);
+  box-shadow: 0 14px 30px rgba(62, 90, 57, 0.12);
 }
 
 .day-card-header {
@@ -709,7 +731,7 @@ select:focus {
   align-items: baseline;
   margin-bottom: 16px;
   padding-bottom: 12px;
-  border-bottom: 1px solid rgba(89, 117, 83, 0.14);
+  border-bottom: 1px solid rgba(95, 127, 90, 0.14);
 }
 
 .day-card-subtitle {
@@ -725,7 +747,7 @@ select:focus {
   padding: 14px;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.6);
-  border: 1px solid rgba(89, 117, 83, 0.12);
+  border: 1px solid rgba(95, 127, 90, 0.12);
 }
 
 .meal-slot-header {
@@ -751,7 +773,7 @@ select:focus {
   min-height: 92px;
   padding: 10px;
   border-radius: var(--radius-medium);
-  border: 1px solid rgba(89, 117, 83, 0.15);
+  border: 1px solid rgba(95, 127, 90, 0.15);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(234, 244, 231, 0.56));
 }
 
@@ -804,7 +826,12 @@ select:focus {
   padding: 14px 16px;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.86);
-  border: 1px solid rgba(89, 117, 83, 0.12);
+  border: 1px solid rgba(95, 127, 90, 0.12);
+}
+
+.shopping-item-cluster-start {
+  margin-top: 10px;
+  box-shadow: inset 0 2px 0 rgba(120, 154, 116, 0.14);
 }
 
 .shopping-item-label {

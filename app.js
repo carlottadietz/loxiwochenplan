@@ -51,6 +51,8 @@ let state = {
   recipes: [],
   weekPlan: createEmptyWeekPlan(),
   shoppingList: [],
+  currentWeekStart: null,
+  availableWeeks: [],
   weeklyOptions: {
     snacks: [],
     household: [],
@@ -58,6 +60,7 @@ let state = {
   }
 };
 let selectedDay = getCurrentDayLabel();
+let selectedWeekStart = null;
 let editingRecipeId = null;
 let selectedRecipeTags = new Set(["Mittag", "Abendessen"]);
 
@@ -78,6 +81,9 @@ const goTodayButton = document.querySelector("#go-today");
 const showAllDaysButton = document.querySelector("#show-all-days");
 const dayProgressFill = document.querySelector("#day-progress-fill");
 const dayProgressText = document.querySelector("#day-progress-text");
+const weekPicker = document.querySelector("#week-picker");
+const prevWeekButton = document.querySelector("#prev-week");
+const nextWeekButton = document.querySelector("#next-week");
 const weeklyAddForms = Array.from(document.querySelectorAll(".extra-add-form"));
 const recipeLibrary = document.querySelector("#recipe-library");
 const weekBoard = document.querySelector("#week-board");
@@ -118,6 +124,28 @@ showAllDaysButton.addEventListener("click", () => {
   renderPlannerNavigation();
   renderWeekBoard();
 });
+if (weekPicker) {
+  weekPicker.addEventListener("change", () => {
+    const nextWeek = weekInputToWeekStart(weekPicker.value);
+    if (!nextWeek) {
+      return;
+    }
+    selectedWeekStart = nextWeek;
+    syncState({ announce: true });
+  });
+}
+if (prevWeekButton) {
+  prevWeekButton.addEventListener("click", () => {
+    selectedWeekStart = shiftWeek(selectedWeekStart || isoDateToday(), -1);
+    syncState({ announce: true });
+  });
+}
+if (nextWeekButton) {
+  nextWeekButton.addEventListener("click", () => {
+    selectedWeekStart = shiftWeek(selectedWeekStart || isoDateToday(), 1);
+    syncState({ announce: true });
+  });
+}
 weeklyAddForms.forEach((form) => {
   form.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -182,8 +210,9 @@ initialize();
 
 async function initialize() {
   try {
-    const nextState = await apiFetch("/api/state");
+    const nextState = await apiFetch(withWeek("/api/state"));
     replaceState(nextState);
+    syncWeekPicker();
     updateSyncStatus("Gemeinsamer Plan ist synchronisiert.");
   } catch {
     updateSyncStatus("Server nicht erreichbar. Bitte später erneut laden.");
@@ -197,8 +226,9 @@ async function initialize() {
 
 async function syncState(options = {}) {
   try {
-    const nextState = await apiFetch("/api/state");
+    const nextState = await apiFetch(withWeek("/api/state"));
     replaceState(nextState);
+    syncWeekPicker();
     render();
     if (options.announce) {
       updateSyncStatus("Plan erfolgreich neu geladen.");
@@ -223,9 +253,15 @@ async function handleRecipeSubmit(event) {
     return;
   }
 
+  const invalidIngredient = ingredients.find((ingredient) => !hasRequiredIngredientParts(ingredient));
+  if (invalidIngredient) {
+    updateSyncStatus("Bitte jede Zutat mit Menge, Einheit und Name angeben (z. B. 2 kg Kartoffeln).");
+    return;
+  }
+
   try {
     const isEdit = Boolean(editingRecipeId);
-    const nextState = await apiFetch(isEdit ? `/api/recipes/${editingRecipeId}` : "/api/recipes", {
+    const nextState = await apiFetch(withWeek(isEdit ? `/api/recipes/${editingRecipeId}` : "/api/recipes"), {
       method: isEdit ? "PUT" : "POST",
       body: JSON.stringify({ name, baseServings, tags, ingredients })
     });
@@ -242,8 +278,12 @@ async function handleRecipeSubmit(event) {
 
 async function resetWeek() {
   try {
-    const nextState = await apiFetch("/api/week-plan/reset", { method: "POST" });
+    const nextState = await apiFetch(withWeek("/api/week-plan/reset"), {
+      method: "POST",
+      body: JSON.stringify({ weekStart: selectedWeekStart })
+    });
     replaceState(nextState);
+    syncWeekPicker();
     updateSyncStatus("Woche für alle geleert.");
     render();
   } catch {
@@ -277,6 +317,7 @@ function render() {
 }
 
 function renderPlannerNavigation() {
+  syncWeekPicker();
   renderDaySelector();
   updateDayFlowStatus();
 }
@@ -504,6 +545,7 @@ function createMealSlot(day, meal) {
       const nextState = await apiFetch("/api/week-plan", {
         method: "PUT",
         body: JSON.stringify({
+          weekStart: selectedWeekStart,
           day,
           meal,
           recipeId: nextRecipeId,
@@ -586,7 +628,7 @@ function createPlannedRecipeCard(day, meal, recipe, servings) {
     try {
       const nextState = await apiFetch("/api/week-plan", {
         method: "PUT",
-        body: JSON.stringify({ day, meal, recipeId: null, servings: null })
+        body: JSON.stringify({ weekStart: selectedWeekStart, day, meal, recipeId: null, servings: null })
       });
       replaceState(nextState);
       updateSyncStatus(`${day} ${displayMealLabel(meal)} wurde geleert.`);
@@ -609,7 +651,7 @@ async function updatePlannedServings(day, meal, recipeId, servings) {
   try {
     const nextState = await apiFetch("/api/week-plan", {
       method: "PUT",
-      body: JSON.stringify({ day, meal, recipeId, servings })
+      body: JSON.stringify({ weekStart: selectedWeekStart, day, meal, recipeId, servings })
     });
     replaceState(nextState);
     updateSyncStatus(`${day} ${displayMealLabel(meal)} auf ${servings} Personen gesetzt.`);
@@ -627,9 +669,16 @@ function renderShoppingList() {
     return;
   }
 
+  let previousCategory = null;
+
   state.shoppingList.forEach((item) => {
     const listItem = document.createElement("li");
     listItem.className = "shopping-item";
+    const category = item.category || "sonstiges";
+    if (previousCategory !== null && previousCategory !== category) {
+      listItem.classList.add("shopping-item-cluster-start");
+    }
+    previousCategory = category;
 
     const label = document.createElement("label");
     label.className = "shopping-item-label";
@@ -640,6 +689,7 @@ function renderShoppingList() {
     checkbox.addEventListener("change", async () => {
       try {
         const nextState = await apiFetch("/api/shopping-list", {
+        const nextState = await apiFetch(withWeek("/api/shopping-list"), {
           method: "PUT",
           body: JSON.stringify({ itemId: item.id, checked: checkbox.checked })
         });
@@ -729,6 +779,7 @@ function renderWeeklyOptions() {
 async function toggleWeeklyOption(category, itemId, selected) {
   try {
     const nextState = await apiFetch("/api/weekly-options", {
+    const nextState = await apiFetch(withWeek("/api/weekly-options"), {
       method: "PUT",
       body: JSON.stringify({ category, itemId, selected })
     });
@@ -746,6 +797,7 @@ async function createWeeklyOption(category, label, inputElement) {
 
   try {
     const nextState = await apiFetch("/api/weekly-options", {
+    const nextState = await apiFetch(withWeek("/api/weekly-options"), {
       method: "POST",
       body: JSON.stringify({ category, label })
     });
@@ -763,6 +815,7 @@ async function createWeeklyOption(category, label, inputElement) {
 async function deleteWeeklyOption(category, itemId) {
   try {
     const nextState = await apiFetch("/api/weekly-options", {
+    const nextState = await apiFetch(withWeek("/api/weekly-options"), {
       method: "DELETE",
       body: JSON.stringify({ category, itemId })
     });
@@ -776,8 +829,9 @@ async function deleteWeeklyOption(category, itemId) {
 
 async function deleteRecipe(recipeId) {
   try {
-    const nextState = await apiFetch(`/api/recipes/${recipeId}`, { method: "DELETE" });
+    const nextState = await apiFetch(withWeek(`/api/recipes/${recipeId}`), { method: "DELETE" });
     replaceState(nextState);
+    syncWeekPicker();
     updateSyncStatus("Rezept für alle gelöscht.");
     render();
   } catch {
@@ -802,6 +856,8 @@ function replaceState(nextState) {
       : [],
     weekPlan: createEmptyWeekPlan(),
     shoppingList: Array.isArray(nextState.shoppingList) ? nextState.shoppingList : [],
+    currentWeekStart: typeof nextState.currentWeekStart === "string" ? nextState.currentWeekStart : null,
+    availableWeeks: Array.isArray(nextState.availableWeeks) ? nextState.availableWeeks : [],
     weeklyOptions: {
       snacks: Array.isArray(nextState.weeklyOptions?.snacks) ? nextState.weeklyOptions.snacks : [],
       household: Array.isArray(nextState.weeklyOptions?.household) ? nextState.weeklyOptions.household : [],
@@ -818,6 +874,101 @@ function replaceState(nextState) {
       };
     });
   });
+
+  if (state.currentWeekStart) {
+    selectedWeekStart = state.currentWeekStart;
+  }
+}
+
+function isoDateToday() {
+  return formatDateKey(new Date());
+}
+
+function formatDateKey(dateValue) {
+  const year = dateValue.getFullYear();
+  const month = String(dateValue.getMonth() + 1).padStart(2, "0");
+  const day = String(dateValue.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function parseDateKey(value) {
+  const parsed = new Date(`${value}T00:00:00`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function shiftWeek(weekStart, deltaWeeks) {
+  const parsed = parseDateKey(weekStart);
+  if (!parsed) {
+    return weekStart;
+  }
+  parsed.setDate(parsed.getDate() + deltaWeeks * 7);
+  return formatDateKey(parsed);
+}
+
+function getIsoWeekNumber(dateValue) {
+  const date = new Date(dateValue.getTime());
+  const day = (date.getDay() + 6) % 7;
+  date.setDate(date.getDate() - day + 3);
+  const thursday = new Date(date.getTime());
+  const firstThursday = new Date(thursday.getFullYear(), 0, 4);
+  const firstDay = (firstThursday.getDay() + 6) % 7;
+  firstThursday.setDate(firstThursday.getDate() - firstDay + 3);
+  const diff = thursday.getTime() - firstThursday.getTime();
+  return 1 + Math.round(diff / 604800000);
+}
+
+function weekStartToWeekInput(weekStart) {
+  const parsed = parseDateKey(weekStart);
+  if (!parsed) {
+    return "";
+  }
+  const isoYearDate = new Date(parsed.getTime());
+  isoYearDate.setDate(isoYearDate.getDate() + 3);
+  const isoYear = isoYearDate.getFullYear();
+  const isoWeek = String(getIsoWeekNumber(parsed)).padStart(2, "0");
+  return `${isoYear}-W${isoWeek}`;
+}
+
+function weekInputToWeekStart(weekValue) {
+  const match = /^(\d{4})-W(\d{2})$/.exec(weekValue || "");
+  if (!match) {
+    return null;
+  }
+
+  const year = Number(match[1]);
+  const week = Number(match[2]);
+  if (!Number.isInteger(year) || !Number.isInteger(week) || week < 1 || week > 53) {
+    return null;
+  }
+
+  const jan4 = new Date(year, 0, 4);
+  const jan4Day = (jan4.getDay() + 6) % 7;
+  const mondayWeek1 = new Date(jan4.getTime());
+  mondayWeek1.setDate(jan4.getDate() - jan4Day);
+  mondayWeek1.setDate(mondayWeek1.getDate() + (week - 1) * 7);
+  return formatDateKey(mondayWeek1);
+}
+
+function syncWeekPicker() {
+  if (!weekPicker) {
+    return;
+  }
+
+  const value = selectedWeekStart || state.currentWeekStart;
+  const weekInputValue = value ? weekStartToWeekInput(value) : "";
+  if (weekInputValue && weekPicker.value !== weekInputValue) {
+    weekPicker.value = weekInputValue;
+  }
+}
+
+function withWeek(url) {
+  const week = selectedWeekStart || state.currentWeekStart;
+  if (!week) {
+    return url;
+  }
+
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}weekStart=${encodeURIComponent(week)}`;
 }
 
 function updateSyncStatus(message) {
@@ -885,13 +1036,17 @@ function collectIngredients() {
     .filter(Boolean);
 }
 
+function hasRequiredIngredientParts(value) {
+  return /^\s*\d+(?:[.,]\d+)?\s+[A-Za-zÄÖÜäöüß]+\s+.+\s*$/.test(value);
+}
+
 function createIngredientRow(value = "") {
   const row = document.createElement("div");
   row.className = "ingredient-row";
 
   const input = document.createElement("input");
   input.type = "text";
-  input.placeholder = "z. B. 2 Zucchini";
+  input.placeholder = "z. B. 2 kg Kartoffeln";
   input.value = value;
   input.dataset.ingredientInput = "true";
 

@@ -3,6 +3,7 @@ import os
 import re
 import sqlite3
 import uuid
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from flask import Flask, jsonify, request, send_from_directory
@@ -43,8 +44,91 @@ WEEKLY_OPTION_GROUPS = {
         "Olivenoel",
     ],
 }
+SHOPPING_CATEGORY_ORDER = [
+    "gemuese_obst",
+    "kuehlung",
+    "proteine",
+    "backwaren",
+    "trockenwaren",
+    "gewuerze_oele",
+    "snacks",
+    "vorrat",
+    "haushalt",
+    "sonstiges",
+]
+SHOPPING_CATEGORY_KEYWORDS = {
+    "gemuese_obst": [
+        "tomate",
+        "tomaten",
+        "zwiebel",
+        "knoblauch",
+        "paprika",
+        "zucchini",
+        "karotte",
+        "gurke",
+        "salat",
+        "kartoffel",
+        "apfel",
+        "banane",
+        "obst",
+        "gemuese",
+        "gemuese",
+    ],
+    "kuehlung": [
+        "milch",
+        "joghurt",
+        "quark",
+        "kaese",
+        "feta",
+        "butter",
+        "sahne",
+        "mozzarella",
+    ],
+    "proteine": [
+        "huhn",
+        "haehn",
+        "rind",
+        "fisch",
+        "lachs",
+        "tofu",
+        "ei",
+        "eier",
+        "bohnen",
+        "linsen",
+    ],
+    "backwaren": ["brot", "broet", "toast", "wrap", "bröt", "bagel"],
+    "trockenwaren": [
+        "reis",
+        "pasta",
+        "nudel",
+        "hafer",
+        "mehl",
+        "zucker",
+        "dose",
+        "konserve",
+        "passata",
+        "tomaten in dosen",
+    ],
+    "gewuerze_oele": ["oel", "öl", "essig", "salz", "pfeffer", "gewuerz", "gewürz"],
+    "snacks": ["snack", "riegel", "cracker", "schokolade", "nuesse", "nüsse", "chips"],
+    "haushalt": [
+        "reiniger",
+        "spuel",
+        "spül",
+        "kuechenrolle",
+        "küchenrolle",
+        "muell",
+        "müll",
+        "waschmittel",
+        "putz",
+    ],
+    "vorrat": ["vorrat", "olivenoel", "olivenöl", "haferflocken", "pasta", "reis"],
+}
 INGREDIENT_PATTERN = re.compile(
     r"^\s*(?P<amount>\d+(?:[.,]\d+)?)\s*(?P<unit>[A-Za-z]+)?\s+(?P<name>.+?)\s*$"
+)
+INGREDIENT_REQUIRED_PATTERN = re.compile(
+    r"^\s*(?P<amount>\d+(?:[.,]\d+)?)\s+(?P<unit>[A-Za-zÄÖÜäöüß]+)\s+(?P<name>.+?)\s*$"
 )
 DEFAULT_RECIPES = [
     {
@@ -66,6 +150,57 @@ DEFAULT_RECIPES = [
 app = Flask(__name__, static_folder=str(BASE_DIR), static_url_path="")
 
 
+def current_week_start():
+    today = date.today()
+    return today - timedelta(days=today.weekday())
+
+
+def parse_week_start(raw_value):
+    if raw_value is None:
+        return current_week_start()
+
+    text = str(raw_value).strip()
+    if not text:
+        return current_week_start()
+
+    try:
+        parsed = datetime.strptime(text, "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+    return parsed - timedelta(days=parsed.weekday())
+
+
+def week_start_key(week_start):
+    return week_start.isoformat()
+
+
+def ensure_week_slots(connection, week_start):
+    week_key = week_start_key(week_start)
+    existing_slots = {
+        (row["day"], row["meal"])
+        for row in connection.execute(
+            "SELECT day, meal FROM meal_plan_entries WHERE week_start = ?",
+            (week_key,),
+        )
+    }
+
+    for day in DAYS:
+        for meal in MEALS:
+            if (day, meal) not in existing_slots:
+                connection.execute(
+                    "INSERT INTO meal_plan_entries (week_start, day, meal, recipe_id, servings) VALUES (?, ?, ?, NULL, NULL)",
+                    (week_key, day, meal),
+                )
+
+
+def get_available_weeks(connection):
+    rows = connection.execute(
+        "SELECT DISTINCT week_start FROM meal_plan_entries ORDER BY week_start DESC"
+    ).fetchall()
+    return [row["week_start"] for row in rows]
+
+
 def get_connection():
     connection = sqlite3.connect(DATABASE_PATH)
     connection.row_factory = sqlite3.Row
@@ -75,6 +210,28 @@ def get_connection():
 
 def normalize_key(value):
     return " ".join(str(value).strip().lower().split())
+
+
+def infer_shopping_category(label, explicit_category=None):
+    if explicit_category == "snacks":
+        return "snacks"
+    if explicit_category == "household":
+        return "haushalt"
+    if explicit_category == "pantry":
+        return "vorrat"
+
+    normalized = normalize_key(label)
+    for category, keywords in SHOPPING_CATEGORY_KEYWORDS.items():
+        if any(keyword in normalized for keyword in keywords):
+            return category
+    return "sonstiges"
+
+
+def shopping_category_rank(category):
+    try:
+        return SHOPPING_CATEGORY_ORDER.index(category)
+    except ValueError:
+        return len(SHOPPING_CATEGORY_ORDER)
 
 
 def recipe_servings_for(connection, recipe_id):
@@ -114,7 +271,7 @@ def parse_ingredient(ingredient):
     }
 
 
-def build_shopping_list(connection, recipes):
+def build_shopping_list(connection, recipes, week_start):
     recipe_map = {recipe["id"]: recipe for recipe in recipes}
     checked_state = {
         row["item_key"]: bool(row["checked"])
@@ -122,8 +279,10 @@ def build_shopping_list(connection, recipes):
     }
     aggregated = {}
 
+    week_key = week_start_key(week_start)
     for row in connection.execute(
-        "SELECT day, meal, recipe_id, servings FROM meal_plan WHERE recipe_id IS NOT NULL"
+        "SELECT day, meal, recipe_id, servings FROM meal_plan_entries WHERE week_start = ? AND recipe_id IS NOT NULL",
+        (week_key,),
     ):
         recipe = recipe_map.get(row["recipe_id"])
         if recipe is None:
@@ -172,6 +331,7 @@ def build_shopping_list(connection, recipes):
                 "id": item_key,
                 "label": label,
                 "checked": checked_state.get(item_key, False),
+                "category": infer_shopping_category(label),
             }
         )
 
@@ -184,15 +344,26 @@ def build_shopping_list(connection, recipes):
                 "id": weekly_item_id,
                 "label": row["label"],
                 "checked": checked_state.get(weekly_item_id, False),
+                "category": infer_shopping_category(row["label"], row["category"]),
             }
         )
 
-    items.sort(key=lambda item: normalize_key(item["label"]))
+    items.sort(
+        key=lambda item: (
+            shopping_category_rank(item.get("category", "sonstiges")),
+            normalize_key(item["label"]),
+        )
+    )
     return items
 
 
-def serialize_state():
+def serialize_state(week_start=None):
+    resolved_week = week_start or current_week_start()
+    week_key = week_start_key(resolved_week)
+
     with get_connection() as connection:
+        ensure_week_slots(connection, resolved_week)
+
         recipes = [
             {
                 "id": row["id"],
@@ -210,7 +381,8 @@ def serialize_state():
             for day in DAYS
         }
         for row in connection.execute(
-            "SELECT day, meal, recipe_id, servings FROM meal_plan ORDER BY day, meal"
+            "SELECT day, meal, recipe_id, servings FROM meal_plan_entries WHERE week_start = ? ORDER BY day, meal",
+            (week_key,),
         ):
             if row["day"] in week_plan and row["meal"] in week_plan[row["day"]]:
                 week_plan[row["day"]][row["meal"]] = {
@@ -218,7 +390,8 @@ def serialize_state():
                     "servings": row["servings"],
                 }
 
-        shopping_list = build_shopping_list(connection, recipes)
+        shopping_list = build_shopping_list(connection, recipes, resolved_week)
+        available_weeks = get_available_weeks(connection)
         weekly_options = {
             category: [
                 {
@@ -238,6 +411,8 @@ def serialize_state():
         "recipes": recipes,
         "weekPlan": week_plan,
         "shoppingList": shopping_list,
+        "currentWeekStart": week_key,
+        "availableWeeks": available_weeks,
         "weeklyOptions": weekly_options,
     }
 
@@ -262,6 +437,13 @@ def parse_recipe_payload(payload):
     cleaned_ingredients = [str(item).strip() for item in ingredients if str(item).strip()]
     if not cleaned_ingredients:
         return None, "Mindestens eine Zutat ist erforderlich."
+
+    invalid_ingredient = next(
+        (item for item in cleaned_ingredients if INGREDIENT_REQUIRED_PATTERN.match(item) is None),
+        None,
+    )
+    if invalid_ingredient is not None:
+        return None, "Bitte jede Zutat mit Menge, Einheit und Name angeben (z. B. 2 kg Kartoffeln)."
 
     cleaned_tags = []
     for tag in tags:
@@ -340,6 +522,18 @@ def ensure_database():
         )
         connection.execute(
             """
+            CREATE TABLE IF NOT EXISTS meal_plan_entries (
+                week_start TEXT NOT NULL,
+                day TEXT NOT NULL,
+                meal TEXT NOT NULL,
+                recipe_id TEXT REFERENCES recipes(id) ON DELETE SET NULL,
+                servings INTEGER,
+                PRIMARY KEY (week_start, day, meal)
+            )
+            """
+        )
+        connection.execute(
+            """
             CREATE TABLE IF NOT EXISTS shopping_state (
                 item_key TEXT PRIMARY KEY,
                 checked INTEGER NOT NULL DEFAULT 0
@@ -358,17 +552,27 @@ def ensure_database():
             """
         )
 
-        existing_slots = {
-            (row["day"], row["meal"])
-            for row in connection.execute("SELECT day, meal FROM meal_plan")
-        }
-        for day in DAYS:
-            for meal in MEALS:
-                if (day, meal) not in existing_slots:
-                    connection.execute(
-                        "INSERT INTO meal_plan (day, meal, recipe_id, servings) VALUES (?, ?, NULL, NULL)",
-                        (day, meal),
-                    )
+        current_week = current_week_start()
+        migrated_count = connection.execute(
+            "SELECT COUNT(*) AS count FROM meal_plan_entries"
+        ).fetchone()["count"]
+        if migrated_count == 0:
+            for row in connection.execute("SELECT day, meal, recipe_id, servings FROM meal_plan"):
+                connection.execute(
+                    """
+                    INSERT OR REPLACE INTO meal_plan_entries (week_start, day, meal, recipe_id, servings)
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (
+                        week_start_key(current_week),
+                        row["day"],
+                        row["meal"],
+                        row["recipe_id"],
+                        row["servings"],
+                    ),
+                )
+
+        ensure_week_slots(connection, current_week)
 
         recipe_count = connection.execute("SELECT COUNT(*) AS count FROM recipes").fetchone()["count"]
         if recipe_count == 0:
@@ -387,17 +591,19 @@ def ensure_database():
             )
 
         assigned_slots = connection.execute(
-            "SELECT COUNT(*) AS count FROM meal_plan WHERE recipe_id IS NOT NULL"
+            "SELECT COUNT(*) AS count FROM meal_plan_entries WHERE week_start = ? AND recipe_id IS NOT NULL",
+            (week_start_key(current_week),),
         ).fetchone()["count"]
         if assigned_slots == 0 and legacy_week_plan_rows:
             for row in legacy_week_plan_rows:
                 if not row["recipe_id"]:
                     continue
                 connection.execute(
-                    "UPDATE meal_plan SET recipe_id = ?, servings = ? WHERE day = ? AND meal = ?",
+                    "UPDATE meal_plan_entries SET recipe_id = ?, servings = ? WHERE week_start = ? AND day = ? AND meal = ?",
                     (
                         row["recipe_id"],
                         recipe_servings_for(connection, row["recipe_id"]),
+                        week_start_key(current_week),
                         row["day"],
                         "Abendessen",
                     ),
@@ -423,7 +629,10 @@ def health_check():
 
 @app.get("/api/state")
 def get_state():
-    return jsonify(serialize_state())
+    week_start = parse_week_start(request.args.get("weekStart"))
+    if week_start is None:
+        return jsonify({"error": "Ungültige Woche."}), 400
+    return jsonify(serialize_state(week_start))
 
 
 @app.post("/api/recipes")
@@ -445,7 +654,10 @@ def create_recipe():
             ),
         )
 
-    return jsonify(serialize_state())
+    week_start = parse_week_start(request.args.get("weekStart"))
+    if week_start is None:
+        return jsonify({"error": "Ungültige Woche."}), 400
+    return jsonify(serialize_state(week_start))
 
 
 @app.put("/api/recipes/<recipe_id>")
@@ -474,7 +686,10 @@ def update_recipe(recipe_id):
             ),
         )
 
-    return jsonify(serialize_state())
+    week_start = parse_week_start(request.args.get("weekStart"))
+    if week_start is None:
+        return jsonify({"error": "Ungültige Woche."}), 400
+    return jsonify(serialize_state(week_start))
 
 
 @app.delete("/api/recipes/<recipe_id>")
@@ -482,7 +697,10 @@ def delete_recipe(recipe_id):
     with get_connection() as connection:
         connection.execute("DELETE FROM recipes WHERE id = ?", (recipe_id,))
 
-    return jsonify(serialize_state())
+    week_start = parse_week_start(request.args.get("weekStart"))
+    if week_start is None:
+        return jsonify({"error": "Ungültige Woche."}), 400
+    return jsonify(serialize_state(week_start))
 
 
 @app.put("/api/week-plan")
@@ -492,17 +710,24 @@ def update_week_plan():
     meal = payload.get("meal")
     recipe_id = payload.get("recipeId")
     servings = payload.get("servings")
+    week_start = parse_week_start(payload.get("weekStart"))
+
+    if week_start is None:
+        return jsonify({"error": "Ungültige Woche."}), 400
 
     if day not in DAYS or meal not in MEALS:
         return jsonify({"error": "Unbekannter Plan-Slot."}), 400
 
     with get_connection() as connection:
+        ensure_week_slots(connection, week_start)
+        week_key = week_start_key(week_start)
+
         if recipe_id is None:
             connection.execute(
-                "UPDATE meal_plan SET recipe_id = NULL, servings = NULL WHERE day = ? AND meal = ?",
-                (day, meal),
+                "UPDATE meal_plan_entries SET recipe_id = NULL, servings = NULL WHERE week_start = ? AND day = ? AND meal = ?",
+                (week_key, day, meal),
             )
-            return jsonify(serialize_state())
+            return jsonify(serialize_state(week_start))
 
         recipe = connection.execute(
             "SELECT id, base_servings FROM recipes WHERE id = ?",
@@ -520,19 +745,28 @@ def update_week_plan():
             return jsonify({"error": "Die Personenzahl im Plan muss mindestens 1 sein."}), 400
 
         connection.execute(
-            "UPDATE meal_plan SET recipe_id = ?, servings = ? WHERE day = ? AND meal = ?",
-            (recipe_id, servings, day, meal),
+            "UPDATE meal_plan_entries SET recipe_id = ?, servings = ? WHERE week_start = ? AND day = ? AND meal = ?",
+            (recipe_id, servings, week_key, day, meal),
         )
 
-    return jsonify(serialize_state())
+    return jsonify(serialize_state(week_start))
 
 
 @app.post("/api/week-plan/reset")
 def reset_week_plan():
-    with get_connection() as connection:
-        connection.execute("UPDATE meal_plan SET recipe_id = NULL, servings = NULL")
+    payload = request.get_json(silent=True) or {}
+    week_start = parse_week_start(payload.get("weekStart"))
+    if week_start is None:
+        return jsonify({"error": "Ungültige Woche."}), 400
 
-    return jsonify(serialize_state())
+    with get_connection() as connection:
+        ensure_week_slots(connection, week_start)
+        connection.execute(
+            "UPDATE meal_plan_entries SET recipe_id = NULL, servings = NULL WHERE week_start = ?",
+            (week_start_key(week_start),),
+        )
+
+    return jsonify(serialize_state(week_start))
 
 
 @app.put("/api/shopping-list")
@@ -553,7 +787,10 @@ def update_shopping_item():
             (item_id, int(checked)),
         )
 
-    return jsonify(serialize_state())
+    week_start = parse_week_start(request.args.get("weekStart"))
+    if week_start is None:
+        return jsonify({"error": "Ungültige Woche."}), 400
+    return jsonify(serialize_state(week_start))
 
 
 @app.put("/api/weekly-options")
@@ -579,7 +816,10 @@ def update_weekly_option():
             (int(selected), category, item_id),
         )
 
-    return jsonify(serialize_state())
+    week_start = parse_week_start(request.args.get("weekStart"))
+    if week_start is None:
+        return jsonify({"error": "Ungültige Woche."}), 400
+    return jsonify(serialize_state(week_start))
 
 
 @app.post("/api/weekly-options")
@@ -606,7 +846,10 @@ def create_weekly_option():
             (category, item_key, label),
         )
 
-    return jsonify(serialize_state())
+    week_start = parse_week_start(request.args.get("weekStart"))
+    if week_start is None:
+        return jsonify({"error": "Ungültige Woche."}), 400
+    return jsonify(serialize_state(week_start))
 
 
 @app.delete("/api/weekly-options")
@@ -635,7 +878,10 @@ def delete_weekly_option():
             (f"weekly:{category}:{item_id}",),
         )
 
-    return jsonify(serialize_state())
+    week_start = parse_week_start(request.args.get("weekStart"))
+    if week_start is None:
+        return jsonify({"error": "Ungültige Woche."}), 400
+    return jsonify(serialize_state(week_start))
 
 
 @app.get("/")

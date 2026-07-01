@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#6f8f6b">
+  <meta name="theme-color" content="#789a74">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Loxi Wochenplan">
@@ -53,6 +53,12 @@
             <p class="drop-hint">Rezept pro Mahlzeit auswählen und Personenzahl anpassen.</p>
           </div>
           <div class="planner-toolbar">
+            <div class="week-select-row" aria-label="Wochenauswahl">
+              <button id="prev-week" class="ghost-button" type="button">Vorherige Woche</button>
+              <label class="week-picker-label" for="week-picker">Woche</label>
+              <input id="week-picker" class="week-picker" type="week">
+              <button id="next-week" class="ghost-button" type="button">Nächste Woche</button>
+            </div>
             <div class="week-flow-controls" aria-label="Wochenführung">
               <div class="flow-primary-actions">
                 <button id="prev-day" class="secondary-button" type="button">Tag zurück</button>
@@ -178,7 +184,7 @@
         </fieldset>
 
         <fieldset class="ingredient-fieldset">
-          <legend>Zutaten einzeln anlegen</legend>
+          <legend>Zutaten einzeln anlegen (Menge + Einheit Pflicht)</legend>
           <div id="ingredient-list" class="ingredient-list"></div>
           <button id="add-ingredient-button" class="secondary-button" type="button">+ Zutat hinzufügen</button>
         </fieldset>
